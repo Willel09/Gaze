@@ -63,6 +63,9 @@ internal static class Native
     [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool IsChild(IntPtr parent, IntPtr child);
 
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int cmd);
+
     public static string ClassName(IntPtr hWnd)
     {
         var sb = new StringBuilder(64);

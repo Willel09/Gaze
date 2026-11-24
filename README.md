@@ -90,7 +90,9 @@ Read the full write-up, including the Windows limits, in [docs/ARCHITECTURE.md](
 
 ## If the eyes do not show
 
-Windows builds stack the desktop layers differently, so Gaze has seven ways of attaching. It starts with the one that worked last time. The moment your desktop is actually visible (for example after `Win` + `D`) it paints a magenta test square, reads the screen back, and moves on to the next method until one is proven to show. That can take a few seconds the first time, and you may see the square flash once.
+Windows builds stack the desktop layers differently, so Gaze has eight ways of attaching. It starts with the one that worked last time. The moment your desktop is actually visible (for example after `Win` + `D`) it paints a magenta test square, reads the screen back, and moves on to the next method until one is proven to show. That can take a few seconds the first time, and you may see the square flash once.
+
+On Windows 11 24H2 and later (build 26100+), Windows does not show windows placed inside its wallpaper layer. Gaze then uses a small click-through window that holds only the eyes and sits directly above the wallpaper and below every app, with the photo set as your real wallpaper underneath.
 
 1. Apply to desktop, then press `Win` + `D` and wait a few seconds.
 2. Press **Open log file** and attach it, with your Windows version, to an [issue](https://github.com/Willel09/Olles-gon/issues).

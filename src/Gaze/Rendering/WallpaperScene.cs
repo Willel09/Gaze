@@ -40,6 +40,13 @@ public sealed class WallpaperScene : Canvas
 
     public bool Ready => _ready;
 
+    /// <summary>Draw only the eyes on a transparent background; the real Windows wallpaper shows the photo.</summary>
+    public bool EyesOnly
+    {
+        get => _image.Visibility != Visibility.Visible;
+        set { _image.Visibility = value ? Visibility.Collapsed : Visibility.Visible; Background = value ? null : Brushes.Black; }
+    }
+
     readonly System.Windows.Shapes.Rectangle _patch = new() { Width = 40, Height = 40, Fill = Brushes.Magenta, Visibility = Visibility.Collapsed };
 
     /// <summary>Solid magenta square used to check that the overlay really shows on the desktop.</summary>

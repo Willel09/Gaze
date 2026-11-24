@@ -25,13 +25,16 @@ public sealed class WallpaperHost : IDisposable
         public WallpaperScene Scene = null!;
         public MonitorRect Rect;
         public bool Active;
+        public IntPtr Parent;
+        public bool TopLevel;
     }
 
-    readonly record struct Strategy(string Name, bool Progman, bool Late, ZSlot Z);
+    readonly record struct Strategy(string Name, bool Progman, bool Late, ZSlot Z, bool TopLevel = false);
 
     static readonly Strategy[] All =
     {
         new("WorkerW, child", false, false, ZSlot.Default),
+        new("Eyes only, just above the wallpaper", false, false, ZSlot.Bottom, TopLevel: true),
         new("WorkerW, late parent", false, true, ZSlot.Default),
         new("Progman, under icons", true, false, ZSlot.UnderIcons),
         new("Progman, under icons, late parent", true, true, ZSlot.UnderIcons),
@@ -99,6 +102,12 @@ public sealed class WallpaperHost : IDisposable
         var order = new List<Strategy>(All);
         var pref = order.FindIndex(s => s.Name == preferredMethod);
         if (pref > 0) { var s = order[pref]; order.RemoveAt(pref); order.Insert(0, s); }
+        if (pref < 0 && DesktopWindows.Find().DefViewInProgman != IntPtr.Zero)
+        {
+            // Windows 11 24H2+ layout: windows parented into the wallpaper layer are not shown, so start with the overlay.
+            var top = order.FindIndex(s => s.TopLevel);
+            var t = order[top]; order.RemoveAt(top); order.Insert(0, t);
+        }
         _order = order.ToArray();
         _idx = -1;
 
@@ -119,13 +128,13 @@ public sealed class WallpaperHost : IDisposable
             {
                 var layers = DesktopWindows.Find();
                 if (_idx == 0 || _verified == false && _idx <= 1) Log.Write("desktop tree: " + DesktopWindows.Describe(layers));
-                var parent = s.Progman ? layers.Progman : DesktopWindows.WorkerParent(layers);
+                var parent = s.TopLevel ? layers.Progman : s.Progman ? layers.Progman : DesktopWindows.WorkerParent(layers);
                 if (parent == IntPtr.Zero) { Log.Write($"skip '{s.Name}': no parent window"); continue; }
 
                 foreach (var (rect, bmp) in _frames) _overlays.Add(Create(rect, bmp, _eyes!, s, parent, layers));
                 Log.Write($"attached '{s.Name}' parent={DesktopWindows.Fmt(parent)}");
                 foreach (var o in _overlays)
-                    Log.Write($"  overlay {o.Source.Handle} parentOk={Native.GetParent(o.Source.Handle) == parent} prev={DesktopWindows.Fmt(Native.GetWindow(o.Source.Handle, Native.GW_HWNDPREV))} next={DesktopWindows.Fmt(Native.GetWindow(o.Source.Handle, Native.GW_HWNDNEXT))}");
+                    Log.Write($"  overlay {o.Source.Handle} parentOk={o.TopLevel || Native.GetParent(o.Source.Handle) == parent} prev={DesktopWindows.Fmt(Native.GetWindow(o.Source.Handle, Native.GW_HWNDPREV))} next={DesktopWindows.Fmt(Native.GetWindow(o.Source.Handle, Native.GW_HWNDNEXT))}");
                 _nudges = 0; _nudge.Stop(); _nudge.Start();
                 return true;
             }
@@ -143,6 +152,8 @@ public sealed class WallpaperHost : IDisposable
 
     Overlay Create(MonitorRect m, BitmapSource bmp, EyeSettings eyes, Strategy s, IntPtr parent, DesktopWindows.Layers layers)
     {
+        if (s.TopLevel) return CreateEyesOnly(m, bmp, eyes, parent);
+
         var pt = new Native.POINT { X = m.X, Y = m.Y };
         if (!s.Late) Native.ScreenToClient(parent, ref pt);
 
@@ -186,7 +197,73 @@ public sealed class WallpaperHost : IDisposable
         if (s.Z != ZSlot.Default && (after != IntPtr.Zero || s.Z == ZSlot.Top))
             Native.SetWindowPos(src.Handle, after, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
 
-        return new Overlay { Source = src, Scene = scene, Rect = m };
+        return new Overlay { Source = src, Scene = scene, Rect = m, Parent = parent };
+    }
+
+    /// <summary>
+    /// A small layered, click-through window that holds only the eyes. It sits at the very bottom of the normal
+    /// window stack, just above Progman, so it is hidden by every application and never covers icons outside the eyes.
+    /// </summary>
+    Overlay CreateEyesOnly(MonitorRect m, BitmapSource bmp, EyeSettings eyes, IntPtr progman)
+    {
+        var scene = new WallpaperScene { EyesOnly = true };
+        scene.Configure(bmp, eyes, m.W, m.H);
+
+        double l = double.MaxValue, t = double.MaxValue, r = double.MinValue, b = double.MinValue;
+        foreach (var p in scene.Poses)
+        {
+            var rad = Math.Max(p.Width, p.Height) / 2 * 1.2 + 8;
+            l = Math.Min(l, p.Cx - rad); t = Math.Min(t, p.Cy - rad); r = Math.Max(r, p.Cx + rad); b = Math.Max(b, p.Cy + rad);
+        }
+        int bx = (int)Math.Max(0, Math.Floor(l)), by = (int)Math.Max(0, Math.Floor(t));
+        int bw = (int)Math.Min(m.W, Math.Ceiling(r)) - bx, bh = (int)Math.Min(m.H, Math.Ceiling(b)) - by;
+
+        var p0 = new HwndSourceParameters("GazeEyes")
+        {
+            WindowStyle = Native.WS_POPUP | Native.WS_VISIBLE,
+            ExtendedWindowStyle = Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE | Native.WS_EX_TRANSPARENT,
+            UsesPerPixelOpacity = true,
+            PositionX = m.X + bx, PositionY = m.Y + by, Width = bw, Height = bh,
+            AdjustSizingForNonClientArea = false,
+        };
+        var src = new HwndSource(p0);
+        src.CompositionTarget.BackgroundColor = Colors.Transparent;
+        src.AddHook(Hook);
+
+        // The scene is laid out in monitor pixels; show only the part around the eyes.
+        var dpi = src.CompositionTarget.TransformToDevice.M11;
+        var host = new System.Windows.Controls.Canvas { Width = bw, Height = bh, ClipToBounds = true, LayoutTransform = new ScaleTransform(1 / dpi, 1 / dpi) };
+        System.Windows.Controls.Canvas.SetLeft(scene, -bx); System.Windows.Controls.Canvas.SetTop(scene, -by);
+        host.Children.Add(scene);
+        src.RootVisual = host;
+
+        Native.SetWindowPos(src.Handle, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+        Native.SetWindowPos(progman, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+        Log.Write($"  eyes-only window {src.Handle} {bw}x{bh} at {m.X + bx},{m.Y + by}");
+        return new Overlay { Source = src, Scene = scene, Rect = m, Parent = progman, TopLevel = true };
+    }
+
+    /// <summary>Keeps the eyes window directly above Progman and visible (Show desktop can minimise it).</summary>
+    void KeepEyesWindowInPlace()
+    {
+        foreach (var o in _overlays)
+        {
+            if (!o.TopLevel) continue;
+            var h = o.Source.Handle;
+            if (!Native.IsWindowVisible(h) || Native.IsIconic(h)) Native.ShowWindow(h, 4); // SW_SHOWNOACTIVATE
+            if (!IsAbove(h, o.Parent))
+            {
+                Native.SetWindowPos(h, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+                Native.SetWindowPos(o.Parent, Native.HWND_BOTTOM, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+            }
+        }
+    }
+
+    static bool IsAbove(IntPtr a, IntPtr b)
+    {
+        for (var w = Native.GetWindow(a, Native.GW_HWNDNEXT); w != IntPtr.Zero; w = Native.GetWindow(w, Native.GW_HWNDNEXT))
+            if (w == b) return true;
+        return false;
     }
 
     static IntPtr Hook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
@@ -252,13 +329,14 @@ public sealed class WallpaperHost : IDisposable
     void Probe()
     {
         if (_overlays.Count == 0) return;
-        if (!Native.IsWindow(Native.GetParent(_overlays[0].Source.Handle)) && _path != null && _eyes != null)
+        if (!Native.IsWindow(_overlays[0].Parent) && _path != null && _eyes != null)
         {
             Log.Write("parent window lost, re-attaching");
             Start(_path, _eyes, _verified ? _order[_idx].Name : _preferred);
             return;
         }
 
+        KeepEyesWindowInPlace();
         var any = false;
         Overlay? probeO = null; Point probeP = default;
         foreach (var o in _overlays)
