@@ -21,7 +21,8 @@ public sealed class AppController : IDisposable
 
     public AppController()
     {
-        Host.ActiveChanged += () => StatusChanged?.Invoke();
+        Host.ActiveChanged += () => { if (Host.Error != null) LastError = Host.Error; StatusChanged?.Invoke(); };
+        Host.Verified += name => { Settings.WorkingMethod = name; Save(); };
         _rebuild.Tick += (_, _) => { _rebuild.Stop(); Restart(); };
         SystemEvents.DisplaySettingsChanged += OnDisplayChanged;
         SystemEvents.PowerModeChanged += OnPower;
@@ -88,7 +89,7 @@ public sealed class AppController : IDisposable
         LastError = null;
         var path = WallpaperPath;
         if (!Settings.Applied || !Settings.TrackingEnabled || path == null) { Host.Stop(); StatusChanged?.Invoke(); return true; }
-        var ok = Host.Start(path, Settings.Eyes);
+        var ok = Host.Start(path, Settings.Eyes, Settings.WorkingMethod);
         if (!ok) LastError = Host.Error ?? "Could not attach to the desktop.";
         StatusChanged?.Invoke();
         return ok;

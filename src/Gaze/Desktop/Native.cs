@@ -57,6 +57,12 @@ internal static class Native
     [DllImport("dwmapi.dll")] public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS m);
     [StructLayout(LayoutKind.Sequential)] public struct MARGINS { public int Left, Right, Top, Bottom; }
 
+    public const uint GW_HWNDNEXT = 2, GW_HWNDPREV = 3, GW_CHILD = 5;
+    public static readonly IntPtr HWND_TOP = IntPtr.Zero, HWND_BOTTOM = new(1);
+    [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr hWnd, uint cmd);
+    [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool IsChild(IntPtr parent, IntPtr child);
+
     public static string ClassName(IntPtr hWnd)
     {
         var sb = new StringBuilder(64);

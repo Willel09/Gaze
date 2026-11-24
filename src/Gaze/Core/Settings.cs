@@ -65,6 +65,9 @@ public sealed class AppSettings
     public bool TrackingEnabled { get; set; } = true;
     public bool StartWithWindows { get; set; }
 
+    /// <summary>The desktop attach method that was proven to work on this PC.</summary>
+    public string? WorkingMethod { get; set; }
+
 }
 
 public static class SettingsStore
