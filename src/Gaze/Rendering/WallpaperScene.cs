@@ -46,6 +46,9 @@ public sealed class WallpaperScene : Canvas
     /// <summary>The area the tongue can reach, in scene pixels (empty when there is no tongue).</summary>
     public Rect TongueArea { get; private set; } = Rect.Empty;
 
+    /// <summary>Where the mouth is in scene pixels, or null without a tongue.</summary>
+    public Point? Mouth { get; private set; }
+
     public bool Ready => _ready;
 
     /// <summary>Draw only the eyes on a transparent background; the real Windows wallpaper shows the photo.</summary>
@@ -121,11 +124,13 @@ public sealed class WallpaperScene : Canvas
             var (mx, my, unit) = EyeLayout.Mouth(eyes, iw, ih);
             _mouth = new Point(mx * scale + ox, my * scale + oy);
             _tongueMax = Math.Max(8, eyes.TongueSize * unit * scale);
-            _tongue.Configure(_mouth, _tongueMax * 0.36);
+            var tc = Parse(eyes.TongueColor) ?? Color.FromRgb(0xF2, 0x6A, 0x82);
+            _tongue.Configure(_mouth, eyes.TongueWidth * unit * scale, tc, eyes.TongueGroove, eyes.TongueMouth);
+            Mouth = _mouth;
             TongueArea = new Rect(_mouth.X - _tongueMax, _mouth.Y - _tongueMax, _tongueMax * 2, _tongueMax * 2);
             _tx = _ty = _tvx = _tvy = 0;
         }
-        else TongueArea = Rect.Empty;
+        else { TongueArea = Rect.Empty; Mouth = null; }
         _tongue.Visibility = _tongueOn ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -209,7 +214,7 @@ public sealed class WallpaperScene : Canvas
         double dx = target.X - _mouth.X, dy = target.Y - _mouth.Y;
         if (_s.Crazy) { dx = -dx; dy = -dy; }
         var d = Math.Sqrt(dx * dx + dy * dy);
-        var ext = d < 1 ? 0 : _tongueMax * (0.4 + 0.6 * Math.Tanh(d / reach)) * (1 - _sleep);
+        var ext = d < 1 ? 0 : _tongueMax * (_s.TongueRest + (1 - _s.TongueRest) * Math.Tanh(d / reach)) * (1 - _sleep);
         var gx = d < 1 ? 0 : dx / d * ext; var gy = d < 1 ? 0 : dy / d * ext;
         GazeMath.SmoothDamp(ref _tx, ref _tvx, gx, smooth * 1.4, dt);
         GazeMath.SmoothDamp(ref _ty, ref _tvy, gy, smooth * 1.4, dt);

@@ -57,7 +57,7 @@ Press **Save current** to keep a background in your library. Click any saved bac
 - **Pupil focus**: the pupils contract slightly when your cursor comes close.
 - **Blink when you click**: a quick blink on every mouse click.
 - **Crazy mode** — pupils look the exact opposite way from your cursor
-- **Tongue** — sticks out toward your cursor; place the mouth on the photo
+- **Tongue** — sticks out toward your cursor; width, length, colour and resting length are adjustable; drag the pink dot to place the mouth
 - **Idle life**: leave the mouse alone and the eyes start glancing around by themselves. After three minutes they fall asleep, and any movement wakes them.
 - **Loupe**: a magnifier follows the pointer while you place or drag an eye, so marks are pixel-accurate.
 

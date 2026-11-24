@@ -48,6 +48,13 @@ public sealed class EyeSettings
     /// <summary>A tongue that points toward the cursor. TongueSize is its length in eye distances; the mouth is placed by the user (MouthX/Y, fractions of the image) or guessed below the eyes.</summary>
     public bool Tongue { get; set; }
     public double TongueSize { get; set; } = 0.6;
+    /// <summary>Thickness in eye distances.</summary>
+    public double TongueWidth { get; set; } = 0.22;
+    /// <summary>How far it stays out when the cursor is close, as a fraction of its full length.</summary>
+    public double TongueRest { get; set; } = 0.4;
+    public string? TongueColor { get; set; }
+    public bool TongueGroove { get; set; } = true;
+    public bool TongueMouth { get; set; } = true;
     public bool MouthSet { get; set; }
     public double MouthX { get; set; }
     public double MouthY { get; set; }

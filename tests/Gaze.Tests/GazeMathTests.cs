@@ -144,6 +144,14 @@ public class GazeMathTests
     }
 
     [Fact]
+    public void TongueDefaultsAreSane()
+    {
+        var s = new EyeSettings();
+        Assert.InRange(s.TongueWidth, 0.08, 0.5);
+        Assert.InRange(s.TongueRest, 0, 0.9);
+    }
+
+    [Fact]
     public void MouthDefaultsBelowTheEyes()
     {
         var s = new EyeSettings { LeftSet = true, RightSet = true, LeftX = 0.4, LeftY = 0.3, RightX = 0.6, RightY = 0.3 };

@@ -11,11 +11,9 @@ public sealed class TongueView : Canvas
 {
     readonly Ellipse _hole = new() { Fill = new SolidColorBrush(Color.FromRgb(0x4A, 0x18, 0x26)) };
     readonly Canvas _arm = new();
-    readonly Border _body = new()
-    {
-        Background = new LinearGradientBrush(Color.FromRgb(0xFF, 0x86, 0x9A), Color.FromRgb(0xE2, 0x4F, 0x6C), 90),
-    };
-    readonly Rectangle _line = new() { Fill = new SolidColorBrush(Color.FromArgb(0x90, 0xB8, 0x32, 0x52)) };
+    readonly Border _body = new();
+    readonly Rectangle _line = new();
+    bool _groove = true;
     readonly RotateTransform _rot = new();
     double _w = 10;
 
@@ -28,9 +26,13 @@ public sealed class TongueView : Canvas
     }
 
     /// <summary>Put the mouth at m and give the tongue a thickness.</summary>
-    public void Configure(Point m, double thickness)
+    public void Configure(Point m, double thickness, Color color, bool groove, bool mouth)
     {
         _w = Math.Max(4, thickness);
+        _groove = groove;
+        _body.Background = new LinearGradientBrush(Mix(color, Colors.White, 0.22), Mix(color, Colors.Black, 0.16), 90);
+        _line.Fill = new SolidColorBrush(Color.FromArgb(0x99, Mix(color, Colors.Black, 0.35).R, Mix(color, Colors.Black, 0.35).G, Mix(color, Colors.Black, 0.35).B));
+        _hole.Visibility = mouth ? Visibility.Visible : Visibility.Collapsed;
         SetLeft(this, m.X); SetTop(this, m.Y);
         _hole.Width = _w * 1.5; _hole.Height = _w * 0.75;
         SetLeft(_hole, -_hole.Width / 2); SetTop(_hole, -_hole.Height / 2);
@@ -48,7 +50,11 @@ public sealed class TongueView : Canvas
         _rot.Angle = Math.Atan2(y, x) * 180 / Math.PI;
         _body.Width = len;
         _body.CornerRadius = new CornerRadius(0, _w / 2, _w / 2, 0);
+        _line.Visibility = _groove ? Visibility.Visible : Visibility.Collapsed;
         _line.Width = Math.Max(0, len - _w * 0.7);
         SetLeft(_line, 0);
     }
+
+    static Color Mix(Color a, Color b, double t) => Color.FromRgb(
+        (byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
 }

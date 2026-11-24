@@ -177,11 +177,21 @@
                                     </StackPanel>
                                 </CheckBox>
                                 <StackPanel x:Name="TonguePanel" Visibility="Collapsed">
-                                    <g:LabeledSlider x:Name="SlTongue" Label="Tongue length" Minimum="0.2" Maximum="1.2"/>
-                                    <Button x:Name="MouthBtn" Style="{StaticResource QuietButton}" Click="OnPlaceMouth" HorizontalAlignment="Left" Padding="10,0" Height="32">
-                                        <TextBlock Text="Place mouth on photo"/>
+                                    <g:LabeledSlider x:Name="SlTongue" Label="Length" Minimum="0.2" Maximum="1.4"/>
+                                    <g:LabeledSlider x:Name="SlTongueW" Label="Width" Minimum="0.08" Maximum="0.5"/>
+                                    <g:LabeledSlider x:Name="SlTongueRest" Label="Resting length" Minimum="0" Maximum="0.9"/>
+                                    <TextBlock Text="Colour" FontSize="13" Margin="0,2,0,0"/>
+                                    <WrapPanel x:Name="TongueSwatches" Margin="0,8,0,8"/>
+                                    <CheckBox x:Name="TongueGrooveSwitch" Style="{StaticResource Switch}" Click="OnTongueLook">
+                                        <TextBlock Text="Centre line"/>
+                                    </CheckBox>
+                                    <CheckBox x:Name="TongueMouthSwitch" Style="{StaticResource Switch}" Click="OnTongueLook">
+                                        <TextBlock Text="Mouth opening"/>
+                                    </CheckBox>
+                                    <TextBlock Style="{StaticResource Caption}" Margin="2,10,0,8" TextWrapping="Wrap" Text="Place it by dragging the pink dot on the photo in Calibrate view."/>
+                                    <Button x:Name="MouthBtn" Style="{StaticResource QuietButton}" Click="OnResetMouth" HorizontalAlignment="Left" Padding="10,0" Height="32">
+                                        <TextBlock Text="Reset mouth position"/>
                                     </Button>
-                                    <TextBlock Style="{StaticResource Caption}" Margin="2,6,0,0" Text="Until you place it, the mouth sits below the eyes."/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>

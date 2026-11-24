@@ -56,7 +56,10 @@ public partial class MainWindow : Window
         Bind(SlSmooth, E.Smoothness, v => E.Smoothness = v);
         Bind(SlCyclops, E.CyclopsSize, v => E.CyclopsSize = v);
         Bind(SlTongue, E.TongueSize, v => E.TongueSize = v);
+        Bind(SlTongueW, E.TongueWidth, v => E.TongueWidth = v);
+        Bind(SlTongueRest, E.TongueRest, v => E.TongueRest = v);
         TongueSwitch.IsChecked = E.Tongue;
+        TongueGrooveSwitch.IsChecked = E.TongueGroove; TongueMouthSwitch.IsChecked = E.TongueMouth;
         BuildSwatches();
         SyncAppearance();
         Bind(SlDroop, E.Droop, v => E.Droop = v);
@@ -224,6 +227,13 @@ public partial class MainWindow : Window
             if (E.LeftSet) AddCross(E.LeftX * W, E.LeftY * H, accent, Selected == 0);
             if (E.RightSet && !E.Cyclops) AddCross(E.RightX * W, E.RightY * H, accent, Selected == 1);
         }
+
+        if (E.Tongue && _scene.Mouth is { } m)
+        {
+            var dot = new Ellipse { Width = 16, Height = 16, Fill = new SolidColorBrush(Color.FromArgb(0xB0, 0xF2, 0x6A, 0x82)), Stroke = Brushes.White, StrokeThickness = 1.75 };
+            Canvas.SetLeft(dot, m.X - 8); Canvas.SetTop(dot, m.Y - 8);
+            Guides.Children.Add(dot);
+        }
     }
 
     void AddEyeGuide(EyePose p, Brush brush, bool selected)
@@ -257,11 +267,12 @@ public partial class MainWindow : Window
         var p = e.GetPosition(StageGrid);
         double W = _scene.Width, H = _scene.Height;
 
-        if (_placingMouth)
+        // The mouth marker is draggable too.
+        if (E.Tongue && E.IsCalibrated && _scene.Mouth is { } mp && Dist(p, mp.X, mp.Y) < 28)
         {
-            _placingMouth = false;
-            E.MouthSet = true; E.MouthX = Math.Clamp(p.X / W, 0, 1); E.MouthY = Math.Clamp(p.Y / H, 0, 1);
-            OnEyesChanged();
+            _drag = 2;
+            StageGrid.CaptureMouse();
+            ShowLoupe(p);
             e.Handled = true;
             return;
         }
@@ -293,7 +304,7 @@ public partial class MainWindow : Window
     {
         if (_drag < 0 || e.LeftButton != MouseButtonState.Pressed) return;
         var q = e.GetPosition(StageGrid);
-        SetEye(_drag, q);
+        if (_drag == 2) SetMouth(q); else SetEye(_drag, q);
         ShowLoupe(q);
     }
 
@@ -331,6 +342,13 @@ public partial class MainWindow : Window
         if (i == 0) { E.LeftX = nx; E.LeftY = ny; E.LeftSet = true; }
         else { E.RightX = nx; E.RightY = ny; E.RightSet = true; }
         RefreshMarks();
+        OnEyesChanged();
+    }
+
+    void SetMouth(Point p)
+    {
+        E.MouthSet = true;
+        E.MouthX = Math.Clamp(p.X / _scene.Width, 0, 1); E.MouthY = Math.Clamp(p.Y / _scene.Height, 0, 1);
         OnEyesChanged();
     }
 
@@ -428,7 +446,8 @@ public partial class MainWindow : Window
     {
         var d = E;
         SlWidth.Value = d.EyeWidth; SlHeight.Value = d.EyeHeight; SlIris.Value = d.IrisSize; SlPupil.Value = d.PupilSize;
-        SlTilt.Value = d.Tilt; SlLid.Value = d.LidShadow; SlDroop.Value = d.Droop; SlCyclops.Value = d.CyclopsSize; SlTongue.Value = d.TongueSize; TongueSwitch.IsChecked = d.Tongue;
+        SlTilt.Value = d.Tilt; SlLid.Value = d.LidShadow; SlDroop.Value = d.Droop; SlCyclops.Value = d.CyclopsSize; SlTongue.Value = d.TongueSize; SlTongueW.Value = d.TongueWidth; SlTongueRest.Value = d.TongueRest; TongueSwitch.IsChecked = d.Tongue;
+        TongueGrooveSwitch.IsChecked = d.TongueGroove; TongueMouthSwitch.IsChecked = d.TongueMouth;
         SlSens.Value = d.Sensitivity; SlRange.Value = d.Range; SlSmooth.Value = d.Smoothness;
         BlinkSwitch.IsChecked = d.Blink; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife; CrazySwitch.IsChecked = d.Crazy;
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
@@ -573,10 +592,17 @@ public partial class MainWindow : Window
         ("#E8D77A", "Yellow"), ("#9FD6FF", "Ice"), ("#15151A", "Black"),
     };
 
+    static readonly (string? Hex, string Name)[] TonguePalette =
+    {
+        (null, "Pink"), ("#D93A4F", "Red"), ("#FF8A73", "Coral"), ("#A363D6", "Purple"),
+        ("#4C9BE8", "Blue"), ("#5DBB63", "Green"), ("#2B2B2E", "Black"),
+    };
+
     void BuildSwatches()
     {
         Fill(IrisSwatches, "iris", IrisPalette, h => E.IrisColor = h);
         Fill(ScleraSwatches, "sclera", ScleraPalette, h => E.ScleraColor = h);
+        Fill(TongueSwatches, "tongue", TonguePalette, h => E.TongueColor = h);
     }
 
     void Fill(Panel host, string group, (string? Hex, string Name)[] palette, Action<string?> set)
@@ -589,7 +615,7 @@ public partial class MainWindow : Window
                 Background = hex == null ? (Brush)FindResource("FillSelected") : new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
                 Content = hex == null ? "A" : null,
             };
-            System.Windows.Automation.AutomationProperties.SetName(rb, (group == "iris" ? "Iris " : "Eye white ") + name);
+            System.Windows.Automation.AutomationProperties.SetName(rb, (group switch { "iris" => "Iris ", "tongue" => "Tongue ", _ => "Eye white " }) + name);
             rb.Checked += (_, _) => { if (_building) return; set(hex); OnEyesChanged(); };
             host.Children.Add(rb);
         }
@@ -598,7 +624,7 @@ public partial class MainWindow : Window
     void SyncAppearance()
     {
         _building = true;
-        foreach (var (panel, current) in new[] { (IrisSwatches, E.IrisColor), (ScleraSwatches, E.ScleraColor) })
+        foreach (var (panel, current) in new[] { (IrisSwatches, E.IrisColor), (ScleraSwatches, E.ScleraColor), (TongueSwatches, E.TongueColor) })
             foreach (RadioButton rb in panel.Children)
                 rb.IsChecked = string.Equals(rb.Tag as string, current, StringComparison.OrdinalIgnoreCase);
         (E.Pupil switch { PupilShape.Slit => PupilSlit, PupilShape.Horizontal => PupilWide, _ => PupilRound }).IsChecked = true;
@@ -626,8 +652,6 @@ public partial class MainWindow : Window
         OnEyesChanged();
     }
 
-    bool _placingMouth;
-
     void OnTongue(object sender, RoutedEventArgs e)
     {
         E.Tongue = TongueSwitch.IsChecked == true;
@@ -637,13 +661,17 @@ public partial class MainWindow : Window
 
     void ApplyTongueUi() => TonguePanel.Visibility = E.Tongue ? Visibility.Visible : Visibility.Collapsed;
 
-    void OnPlaceMouth(object sender, RoutedEventArgs e)
+    void OnResetMouth(object sender, RoutedEventArgs e)
     {
-        if (_bmp == null) { Toast("Choose a wallpaper first"); return; }
-        if (!E.IsCalibrated) { Toast("Mark the eyes first"); return; }
-        ModeCalibrate.IsChecked = true;
-        _placingMouth = true;
-        Toast("Click the photo where the mouth is");
+        E.MouthSet = false;
+        OnEyesChanged();
+    }
+
+    void OnTongueLook(object sender, RoutedEventArgs e)
+    {
+        E.TongueGroove = TongueGrooveSwitch.IsChecked == true;
+        E.TongueMouth = TongueMouthSwitch.IsChecked == true;
+        OnEyesChanged();
     }
 
     void ApplyCyclopsUi()
