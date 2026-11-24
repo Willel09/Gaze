@@ -95,8 +95,6 @@
                         <TextBlock Text="System" Style="{StaticResource Section}" Margin="0,24,0,4"/>
                         <CheckBox x:Name="TrackSwitch" Style="{StaticResource Switch}" Content="Eye tracking" Click="OnTrackingSwitch"/>
                         <CheckBox x:Name="StartSwitch" Style="{StaticResource Switch}" Content="Start with Windows" Click="OnStartSwitch"/>
-                        <CheckBox x:Name="CompatSwitch" Style="{StaticResource Switch}" Content="Compatibility mode" Click="OnCompat"/>
-                        <TextBlock Style="{StaticResource Caption}" Margin="0,0,0,4" Text="Turn on if the eyes do not show on your desktop."/>
                         <TextBlock x:Name="VersionText" Style="{StaticResource Caption}" Margin="0,12,0,8"/>
                         <Button x:Name="UpdateBtn" Style="{StaticResource SecondaryButton}" Click="OnUpdate" HorizontalContentAlignment="Left">
                             <StackPanel Orientation="Horizontal">

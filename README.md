@@ -81,9 +81,10 @@ Read the full write-up, including the Windows limits, in [docs/ARCHITECTURE.md](
 
 ## If the eyes do not show
 
+Gaze tries four ways of attaching to the desktop and keeps the first one that works. For each it paints a test square and reads the screen back to be sure. If none work, the status line says so.
+
 1. Press **Apply to desktop** again and wait two seconds.
-2. Turn on **Compatibility mode** in the System section. It attaches to the desktop a different way that some Windows 11 builds need.
-3. Press **Open log file** and attach it, with your Windows version, to an [issue](https://github.com/Willel09/Olles-gon/issues).
+2. Press **Open log file** and attach it, with your Windows version, to an [issue](https://github.com/Willel09/Olles-gon/issues).
 
 ## Performance
 

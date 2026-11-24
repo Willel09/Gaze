@@ -58,8 +58,6 @@ public sealed class AppSettings
     public bool TrackingEnabled { get; set; } = true;
     public bool StartWithWindows { get; set; }
 
-    /// <summary>Attach to Progman instead of the WorkerW. Try it if the eyes do not show on your Windows build.</summary>
-    public bool CompatibilityAttach { get; set; }
 }
 
 public static class SettingsStore

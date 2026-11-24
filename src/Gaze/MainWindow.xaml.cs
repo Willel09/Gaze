@@ -57,7 +57,6 @@ public partial class MainWindow : Window
         BlinkSwitch.IsChecked = E.Blink;
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
         StartSwitch.IsChecked = _app.Settings.StartWithWindows;
-        CompatSwitch.IsChecked = _app.Settings.CompatibilityAttach;
 
         LoadImage();
         UpdateStatus();
@@ -483,8 +482,6 @@ public partial class MainWindow : Window
         finally { _busy = false; }
     }
 
-    void OnCompat(object sender, RoutedEventArgs e) => _app.SetCompatibility(CompatSwitch.IsChecked == true);
-
     void OnOpenLog(object sender, RoutedEventArgs e)
     {
         try
@@ -519,7 +516,7 @@ public partial class MainWindow : Window
         Bind2(SlWidth, d.EyeWidth); Bind2(SlHeight, d.EyeHeight); Bind2(SlIris, d.IrisSize); Bind2(SlPupil, d.PupilSize);
         Bind2(SlTilt, d.Tilt); Bind2(SlLid, d.LidShadow); Bind2(SlSens, d.Sensitivity); Bind2(SlRange, d.Range); Bind2(SlSmooth, d.Smoothness);
         SyncAppearance(); ApplyCyclopsUi();
-        BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false; CompatSwitch.IsChecked = false;
+        BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false;
         LoadImage();
         Toast("Settings reset");
     }

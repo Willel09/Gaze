@@ -88,17 +88,10 @@ public sealed class AppController : IDisposable
         LastError = null;
         var path = WallpaperPath;
         if (!Settings.Applied || !Settings.TrackingEnabled || path == null) { Host.Stop(); StatusChanged?.Invoke(); return true; }
-        var ok = Host.Start(path, Settings.Eyes, Settings.CompatibilityAttach);
+        var ok = Host.Start(path, Settings.Eyes);
         if (!ok) LastError = Host.Error ?? "Could not attach to the desktop.";
         StatusChanged?.Invoke();
         return ok;
-    }
-
-    public void SetCompatibility(bool on)
-    {
-        Settings.CompatibilityAttach = on;
-        Save();
-        Restart();
     }
 
     public void SetAutostart(bool on)

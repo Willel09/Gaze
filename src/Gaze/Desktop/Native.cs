@@ -18,6 +18,8 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 
+    public const int WS_POPUP = unchecked((int)0x80000000), GWL_STYLE = -16;
+    public const uint SWP_SHOWWINDOW = 0x40, SWP_FRAMECHANGED = 0x20;
     public const uint RDW_INVALIDATE = 1, RDW_ALLCHILDREN = 0x80, RDW_UPDATENOW = 0x100;
     public const uint SWP_NOSIZE = 1, SWP_NOMOVE = 2, SWP_NOACTIVATE = 0x10;
 
@@ -44,6 +46,12 @@ internal static class Native
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT r);
+
+    [DllImport("user32.dll")] public static extern IntPtr SetParent(IntPtr child, IntPtr parent);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] public static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int index, IntPtr value);
+    [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hWnd, IntPtr dc);
+    [DllImport("gdi32.dll")] public static extern uint GetPixel(IntPtr dc, int x, int y);
 
     public static string ClassName(IntPtr hWnd)
     {

@@ -38,6 +38,17 @@ public sealed class WallpaperScene : Canvas
 
     public bool Ready => _ready;
 
+    readonly System.Windows.Shapes.Rectangle _patch = new() { Width = 40, Height = 40, Fill = Brushes.Magenta, Visibility = Visibility.Collapsed };
+
+    /// <summary>Solid magenta square used to check that the overlay really shows on the desktop.</summary>
+    public void ShowTestPatch(Point center, bool on)
+    {
+        if (!Children.Contains(_patch)) Children.Add(_patch);
+        SetLeft(_patch, center.X - 20); SetTop(_patch, center.Y - 20);
+        SetZIndex(_patch, 1000);
+        _patch.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     /// <summary>Eye centers in scene pixels (one in cyclops mode).</summary>
     public Point[] EyeCenters() => Array.ConvertAll(Poses, p => new Point(p.Cx, p.Cy));
 
