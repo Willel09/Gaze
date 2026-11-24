@@ -56,6 +56,7 @@ Press **Save current** to keep a background in your library. Click any saved bac
 - **Eyelid droop**: from wide awake to sleepy.
 - **Pupil focus**: the pupils contract slightly when your cursor comes close.
 - **Blink when you click**: a quick blink on every mouse click.
+- **Crazy mode** — pupils look the exact opposite way from your cursor
 - **Idle life**: leave the mouse alone and the eyes start glancing around by themselves. After three minutes they fall asleep, and any movement wakes them.
 - **Loupe**: a magnifier follows the pointer while you place or drag an eye, so marks are pixel-accurate.
 

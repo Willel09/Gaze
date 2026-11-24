@@ -43,6 +43,7 @@ public sealed class EyeSettings
 
     /// <summary>Eyes glance around when the mouse is idle and fall asleep after a few minutes.</summary>
     public bool IdleLife { get; set; } = true;
+    public bool Crazy { get; set; }
     /// <summary>Quick blink whenever you click.</summary>
     public bool ClickBlink { get; set; } = true;
 

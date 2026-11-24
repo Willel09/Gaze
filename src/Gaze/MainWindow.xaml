@@ -17,6 +17,7 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -30,8 +31,27 @@
                     </StackPanel>
                 </StackPanel>
 
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0">
-                    <StackPanel Margin="20,0,20,8">
+                <!-- Tabs: one section at a time instead of one long scroll -->
+                <Border Grid.Row="1" Background="#14FFFFFF" CornerRadius="12" Padding="3" Margin="20,0,20,12">
+                    <UniformGrid Columns="4">
+                        <RadioButton x:Name="TabScene" GroupName="tab" Style="{StaticResource TabItem}" IsChecked="True" Checked="OnTab" Tag="PageScene" AutomationProperties.Name="Scene">
+                            <StackPanel><TextBlock Style="{StaticResource Icon}" Text="&#xEB9F;" HorizontalAlignment="Center"/><TextBlock Text="Scene" FontSize="11" Margin="0,3,0,0" HorizontalAlignment="Center"/></StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="tab" Style="{StaticResource TabItem}" Checked="OnTab" Tag="PageEyes" AutomationProperties.Name="Eyes">
+                            <StackPanel><TextBlock Style="{StaticResource Icon}" Text="&#xE7B3;" HorizontalAlignment="Center"/><TextBlock Text="Eyes" FontSize="11" Margin="0,3,0,0" HorizontalAlignment="Center"/></StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="tab" Style="{StaticResource TabItem}" Checked="OnTab" Tag="PageBehave" AutomationProperties.Name="Behaviour">
+                            <StackPanel><TextBlock Style="{StaticResource Icon}" Text="&#xE9E9;" HorizontalAlignment="Center"/><TextBlock Text="Behaviour" FontSize="11" Margin="0,3,0,0" HorizontalAlignment="Center"/></StackPanel>
+                        </RadioButton>
+                        <RadioButton GroupName="tab" Style="{StaticResource TabItem}" Checked="OnTab" Tag="PageSystem" AutomationProperties.Name="System">
+                            <StackPanel><TextBlock Style="{StaticResource Icon}" Text="&#xE713;" HorizontalAlignment="Center"/><TextBlock Text="System" FontSize="11" Margin="0,3,0,0" HorizontalAlignment="Center"/></StackPanel>
+                        </RadioButton>
+                    </UniformGrid>
+                </Border>
+
+                <ScrollViewer x:Name="PageScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="0">
+                    <Grid Margin="20,0,20,8">
+<StackPanel x:Name="PageScene">
 
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
@@ -71,7 +91,9 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
+                        </StackPanel>
+<StackPanel x:Name="PageEyes" Visibility="Collapsed">
+<Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <TextBlock Style="{StaticResource CardIcon}" Text="&#xE7B3;"/>
@@ -142,7 +164,9 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
+                        </StackPanel>
+<StackPanel x:Name="PageBehave" Visibility="Collapsed">
+<Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                     <TextBlock Style="{StaticResource CardIcon}" Text="&#xE9E9;"/>
@@ -163,6 +187,12 @@
                                         <TextBlock Style="{StaticResource Caption}" Text="A quick reaction to every mouse click"/>
                                     </StackPanel>
                                 </CheckBox>
+                                <CheckBox x:Name="CrazySwitch" Style="{StaticResource Switch}" Click="OnCrazy">
+                                    <StackPanel>
+                                        <TextBlock Text="Crazy mode"/>
+                                        <TextBlock Style="{StaticResource Caption}" Text="Pupils look the exact opposite way from your cursor"/>
+                                    </StackPanel>
+                                </CheckBox>
                                 <CheckBox x:Name="IdleSwitch" Style="{StaticResource Switch}" Click="OnIdle">
                                     <StackPanel>
                                         <TextBlock Text="Idle life"/>
@@ -172,7 +202,9 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}">
+                        </StackPanel>
+<StackPanel x:Name="PageSystem" Visibility="Collapsed">
+<Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                     <TextBlock Style="{StaticResource CardIcon}" Text="&#xE713;"/>
@@ -202,10 +234,11 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
+</StackPanel>
+                    </Grid>
                 </ScrollViewer>
 
-                <Border Grid.Row="2" BorderBrush="{StaticResource Hairline}" BorderThickness="0,1,0,0" Padding="24,16,24,20">
+                <Border Grid.Row="3" BorderBrush="{StaticResource Hairline}" BorderThickness="0,1,0,0" Padding="24,16,24,20">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="2,0,0,12">
                             <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{StaticResource TextMuted}" VerticalAlignment="Center"/>

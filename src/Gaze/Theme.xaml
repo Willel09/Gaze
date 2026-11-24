@@ -154,6 +154,30 @@
         </Setter>
     </Style>
 
+    <!-- Icon tab (sidebar navigation) -->
+    <Style x:Key="TabItem" TargetType="RadioButton" BasedOn="{StaticResource SegmentItem}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" Height="52" CornerRadius="10" BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource FillSelected}"/>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource AccentText}"/></Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsChecked" Value="False"/></MultiTrigger.Conditions>
+                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Grouped card: translucent so the window material shows through, like an inset list -->
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="#0FFFFFFF"/>

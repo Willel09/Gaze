@@ -156,6 +156,7 @@ public sealed class WallpaperScene : Canvas
         {
             var e = _eyes[i];
             var (lx, ly) = GazeMath.Rotate(target.X - e.Pose.Cx, target.Y - e.Pose.Cy, -e.Pose.TiltDeg);
+            if (_s.Crazy) { lx = -lx; ly = -ly; } // crazy mode: look away from the cursor
             var (tx, ty) = GazeMath.Target(lx, ly, e.Rx, e.Ry, reach);
             GazeMath.SmoothDamp(ref e.X, ref e.Vx, tx, smooth, dt);
             GazeMath.SmoothDamp(ref e.Y, ref e.Vy, ty, smooth, dt);

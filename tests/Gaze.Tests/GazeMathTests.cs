@@ -133,4 +133,13 @@ public class GazeMathTests
         Assert.Equal("#112233", a.IrisColor);
         Assert.Equal(PupilShape.Slit, b.Pupil);
     }
+
+    [Fact]
+    public void OppositeCursorGivesOppositePupil()
+    {
+        var a = GazeMath.Target(120, -40, 20, 8, 300);
+        var b = GazeMath.Target(-120, 40, 20, 8, 300);
+        Assert.Equal(-a.X, b.X, 9);
+        Assert.Equal(-a.Y, b.Y, 9);
+    }
 }

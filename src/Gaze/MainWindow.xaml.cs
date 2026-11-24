@@ -60,7 +60,7 @@ public partial class MainWindow : Window
         Bind(SlDroop, E.Droop, v => E.Droop = v);
         BlinkSwitch.IsChecked = E.Blink;
         ClickSwitch.IsChecked = E.ClickBlink;
-        IdleSwitch.IsChecked = E.IdleLife;
+        IdleSwitch.IsChecked = E.IdleLife; CrazySwitch.IsChecked = E.Crazy;
         BuildLooks();
         BuildLibrary();
         _logo = new MiniEye(LogoEye);
@@ -418,7 +418,7 @@ public partial class MainWindow : Window
         SlWidth.Value = d.EyeWidth; SlHeight.Value = d.EyeHeight; SlIris.Value = d.IrisSize; SlPupil.Value = d.PupilSize;
         SlTilt.Value = d.Tilt; SlLid.Value = d.LidShadow; SlDroop.Value = d.Droop; SlCyclops.Value = d.CyclopsSize;
         SlSens.Value = d.Sensitivity; SlRange.Value = d.Range; SlSmooth.Value = d.Smoothness;
-        BlinkSwitch.IsChecked = d.Blink; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife;
+        BlinkSwitch.IsChecked = d.Blink; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife; CrazySwitch.IsChecked = d.Crazy;
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
         StartSwitch.IsChecked = _app.Settings.StartWithWindows;
         SyncAppearance();
@@ -532,6 +532,19 @@ public partial class MainWindow : Window
     }
 
     void OnClickBlink(object sender, RoutedEventArgs e) { E.ClickBlink = ClickSwitch.IsChecked == true; OnEyesChanged(); }
+    void OnCrazy(object sender, RoutedEventArgs e) { E.Crazy = CrazySwitch.IsChecked == true; OnEyesChanged(); }
+
+    void OnTab(object sender, RoutedEventArgs e)
+    {
+        if (PageScene == null || sender is not RadioButton rb) return;
+        foreach (var p in new[] { PageScene, PageEyes, PageBehave, PageSystem })
+            p.Visibility = p.Name == (string)rb.Tag ? Visibility.Visible : Visibility.Collapsed;
+        PageScroll.ScrollToTop();
+        var shown = (UIElement)FindName((string)rb.Tag);
+        shown.Opacity = 0;
+        shown.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(1, TimeSpan.FromMilliseconds(180)));
+    }
+
     void OnIdle(object sender, RoutedEventArgs e) { E.IdleLife = IdleSwitch.IsChecked == true; OnEyesChanged(); }
 
     // ---- cyclops + appearance ---------------------------------------------------------------------------------
