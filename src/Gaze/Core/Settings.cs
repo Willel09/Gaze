@@ -4,6 +4,8 @@ using System.Text.Json;
 
 namespace Gaze.Core;
 
+public enum PupilShape { Round, Slit, Horizontal }
+
 /// <summary>Eye calibration. Centers are 0..1 of the image; sizes are multiples of the distance between the eyes.</summary>
 public sealed class EyeSettings
 {
@@ -26,7 +28,17 @@ public sealed class EyeSettings
     public double Smoothness { get; set; } = 0.35;
     public bool Blink { get; set; } = false;
 
-    public bool IsCalibrated => LeftSet && RightSet;
+    /// <summary>One big eye instead of two. Its size is CyclopsSize (fraction of image width) in place of the eye distance.</summary>
+    public bool Cyclops { get; set; }
+    public double CyclopsSize { get; set; } = 0.20;
+
+    /// <summary>Appearance. Null colour = sampled from the photo. Hex like #5B8DEF.</summary>
+    public string? IrisColor { get; set; }
+    public string? ScleraColor { get; set; }
+    public PupilShape Pupil { get; set; } = PupilShape.Round;
+    public bool Glint { get; set; } = true;
+
+    public bool IsCalibrated => LeftSet && (Cyclops || RightSet);
 
     public void ResetShape()
     {

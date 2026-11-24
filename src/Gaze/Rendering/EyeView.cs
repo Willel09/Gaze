@@ -16,6 +16,7 @@ public sealed class EyeView : Canvas
     readonly Ellipse _sclera = new();
     readonly Canvas _irisLayer = new();
     readonly Ellipse _iris = new();
+    readonly Ellipse _pupil = new();
     readonly Ellipse _glint = new();
     readonly Ellipse _vignette = new();
     readonly Rectangle _shadow = new();
@@ -35,17 +36,19 @@ public sealed class EyeView : Canvas
         foreach (UIElement e in new UIElement[] { _sclera, _irisLayer, _vignette, _shadow, _lid, _lash })
             Children.Add(e);
         _irisLayer.Children.Add(_iris);
+        _irisLayer.Children.Add(_pupil);
         _irisLayer.Children.Add(_glint);
         Clip = _clip;
     }
 
-    public void Configure(EyePose p, double lidShadow, double pupilFrac, EyeColors c)
+    public void Configure(EyePose p, EyeSettings st, EyeColors c)
     {
         Canvas.SetLeft(this, p.Cx);
         Canvas.SetTop(this, p.Cy);
         _tilt.Angle = p.TiltDeg;
         _h = p.Height;
         double w = p.Width, h = p.Height, r = p.IrisR;
+        double lidShadow = st.LidShadow, pupilFrac = st.PupilSize;
 
         _clip.RadiusX = w / 2; _clip.RadiusY = h / 2;
 
@@ -57,16 +60,27 @@ public sealed class EyeView : Canvas
         var ring = Scale(c.Iris, 0.35);
         var mid = Scale(c.Iris, 1.0);
         var rim = Scale(c.Iris, 0.62);
-        _iris.Fill = Frozen(new RadialGradientBrush(new GradientStopCollection
+        var stops = new[]
         {
-            new(Color.FromRgb(8, 8, 9), 0.0),
-            new(Color.FromRgb(8, 8, 9), pupilFrac),
-            new(Scale(c.Iris, 0.55), Math.Min(0.98, pupilFrac + 0.04)),
-            new(mid, 0.62),
-            new(rim, 0.86),
-            new(ring, 0.97),
-            new(Color.FromArgb(0, ring.R, ring.G, ring.B), 1.0),
-        }));
+            new GradientStop(Scale(c.Iris, 0.5), 0.0),
+            new GradientStop(Scale(c.Iris, 0.78), Math.Min(0.7, pupilFrac)),
+            new GradientStop(mid, Math.Min(0.8, pupilFrac + 0.2)),
+            new GradientStop(rim, 0.88),
+            new GradientStop(ring, 0.97),
+            new GradientStop(Color.FromArgb(0, ring.R, ring.G, ring.B), 1.0),
+        };
+        _iris.Fill = Frozen(new RadialGradientBrush(new GradientStopCollection(stops)));
+
+        var d = 2 * r * pupilFrac;
+        var (pw, ph) = st.Pupil switch
+        {
+            PupilShape.Slit => (Math.Max(2, d * 0.34), r * 1.75),
+            PupilShape.Horizontal => (r * 1.6, Math.Max(2, d * 0.5)),
+            _ => (d, d),
+        };
+        Place(_pupil, -pw / 2, -ph / 2, pw, ph);
+        _pupil.Fill = Frozen(new SolidColorBrush(Color.FromRgb(8, 8, 9)));
+        _glint.Visibility = st.Glint ? Visibility.Visible : Visibility.Collapsed;
 
         var g = r * 0.42;
         Place(_glint, -r * 0.46, -r * 0.5, g, g);

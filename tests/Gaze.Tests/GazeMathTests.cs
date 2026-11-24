@@ -95,4 +95,18 @@ public class GazeMathTests
         Assert.Equal(0.123, back.Eyes.LeftX);
         Assert.True(back.Applied);
     }
+
+    [Fact]
+    public void Cyclops_GivesOneEyeSizedByItsOwnSetting()
+    {
+        var s = new EyeSettings { Cyclops = true, LeftSet = true, LeftX = 0.5, LeftY = 0.4, CyclopsSize = 0.2 };
+        var poses = EyeLayout.Poses(s, 1000, 800);
+        Assert.Single(poses);
+        Assert.Equal(500, poses[0].Cx, 6);
+        Assert.Equal(0.2 * 1000 * s.EyeWidth, poses[0].Width, 6);
+        Assert.True(s.IsCalibrated);
+        s.Cyclops = false;
+        Assert.False(s.IsCalibrated);
+        Assert.Equal(2, EyeLayout.Poses(s, 1000, 800).Length);
+    }
 }

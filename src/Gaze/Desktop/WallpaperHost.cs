@@ -120,8 +120,7 @@ public sealed class WallpaperHost : IDisposable
             var active = false;
             if (!_locked)
             {
-                var (l, r) = o.Scene.EyeCenters();
-                active = IsVisible(o, l) || IsVisible(o, r);
+                foreach (var c in o.Scene.EyeCenters()) active |= IsVisible(o, c);
             }
             o.Active = active;
             any |= active;

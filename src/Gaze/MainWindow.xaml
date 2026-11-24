@@ -39,8 +39,10 @@
                         <TextBlock x:Name="FileName" Style="{StaticResource Caption}" Margin="2,8,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                                    Text="JPG, PNG, WebP or BMP"/>
 
-                        <TextBlock Text="Eyes" Style="{StaticResource Section}" Margin="0,24,0,8"/>
-                        <Border Background="{StaticResource Fill}" CornerRadius="10" Padding="2">
+                        <TextBlock Text="Eyes" Style="{StaticResource Section}" Margin="0,24,0,4"/>
+                        <CheckBox x:Name="CyclopsSwitch" Style="{StaticResource Switch}" Content="Cyclops mode (one eye)" Click="OnCyclops"/>
+                        <g:LabeledSlider x:Name="SlCyclops" Label="Eye size" Minimum="0.05" Maximum="0.5" Visibility="Collapsed"/>
+                        <Border x:Name="EyePicker" Background="{StaticResource Fill}" CornerRadius="10" Padding="2" Margin="0,4,0,0">
                             <UniformGrid Columns="2">
                                 <RadioButton x:Name="PickLeft" GroupName="eye" Style="{StaticResource SegmentItem}" IsChecked="True" Checked="OnPickEye">
                                     <StackPanel Orientation="Horizontal">
@@ -68,6 +70,21 @@
                         <Button Style="{StaticResource QuietButton}" Click="OnAutoFit" HorizontalAlignment="Left" Padding="10,0" Height="32">
                             <TextBlock Text="Auto-fit eye shape"/>
                         </Button>
+
+                        <TextBlock Text="Appearance" Style="{StaticResource Section}" Margin="0,24,0,8"/>
+                        <TextBlock Text="Iris colour" FontSize="13"/>
+                        <WrapPanel x:Name="IrisSwatches" Margin="0,8,0,8"/>
+                        <TextBlock Text="Eye white colour" FontSize="13"/>
+                        <WrapPanel x:Name="ScleraSwatches" Margin="0,8,0,8"/>
+                        <TextBlock Text="Pupil shape" FontSize="13" Margin="0,0,0,8"/>
+                        <Border Background="{StaticResource Fill}" CornerRadius="10" Padding="2">
+                            <UniformGrid Columns="3">
+                                <RadioButton x:Name="PupilRound" GroupName="pupil" Style="{StaticResource SegmentItem}" Content="Round" Checked="OnPupil"/>
+                                <RadioButton x:Name="PupilSlit" GroupName="pupil" Style="{StaticResource SegmentItem}" Content="Slit" Checked="OnPupil"/>
+                                <RadioButton x:Name="PupilWide" GroupName="pupil" Style="{StaticResource SegmentItem}" Content="Wide" Checked="OnPupil"/>
+                            </UniformGrid>
+                        </Border>
+                        <CheckBox x:Name="GlintSwitch" Style="{StaticResource Switch}" Content="Highlight" Click="OnGlint" Margin="0,4,0,0"/>
 
                         <TextBlock Text="Tracking" Style="{StaticResource Section}" Margin="0,24,0,8"/>
                         <g:LabeledSlider x:Name="SlSens"   Label="Sensitivity" Minimum="0.4" Maximum="2.5" Scale="100"/>

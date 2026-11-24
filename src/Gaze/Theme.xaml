@@ -154,6 +154,31 @@
         </Setter>
     </Style>
 
+    <!-- Colour swatch (radio) -->
+    <Style x:Key="Swatch" TargetType="RadioButton">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Margin" Value="0,0,6,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid Background="Transparent">
+                        <Ellipse x:Name="Ring" Stroke="{StaticResource TextPrimary}" StrokeThickness="2" Opacity="0"/>
+                        <Ellipse Margin="4" Fill="{TemplateBinding Background}" Stroke="#30FFFFFF" StrokeThickness="1"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" TextElement.Foreground="{StaticResource TextSecondary}" TextElement.FontSize="11"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True"><Setter TargetName="Ring" Property="Opacity" Value="1"/></Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Ring" Property="Stroke" Value="{StaticResource AccentText}"/><Setter TargetName="Ring" Property="Opacity" Value="1"/></Trigger>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Ring" Property="Opacity" Value="0.5"/></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Switch -->
     <Style x:Key="Switch" TargetType="CheckBox">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>

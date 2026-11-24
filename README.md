@@ -44,6 +44,19 @@ Needs 64-bit Windows 10 (1809 or later) or Windows 11. Close the window and Gaze
 
 Settings you can change at any time: eye width, height, iris and pupil size, tilt, lid shadow, tracking sensitivity, movement range, smoothness and blinking. Everything is saved, including *Start with Windows*.
 
+### Cyclops mode
+
+Switch on **Cyclops mode** to give the picture a single eye. Click once to place it, then set its size. The same shape sliders and tracking apply.
+
+### Eye appearance
+
+Change how the eyes look without touching the photo:
+
+- **Iris colour**: Auto (sampled from the photo), brown, hazel, green, blue, grey, amber, red, violet or cyan
+- **Eye white colour**: Auto, white, warm, bloodshot, yellow, ice or black
+- **Pupil shape**: round, slit or wide
+- **Highlight**: the small reflection in the eye, on or off
+
 ## Why it is part of the wallpaper
 
 Gaze is not an always-on-top window. It uses the same layer Windows draws your wallpaper on.

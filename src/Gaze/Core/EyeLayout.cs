@@ -22,6 +22,18 @@ public static class EyeLayout
         return (Make(ax, ay), Make(bx, by));
     }
 
+    /// <summary>The eyes to draw: two normally, one in cyclops mode.</summary>
+    public static EyePose[] Poses(EyeSettings s, double imgW, double imgH)
+    {
+        if (!s.Cyclops)
+        {
+            var (a, b) = Compute(s, imgW, imgH);
+            return new[] { a, b };
+        }
+        var unit = Math.Max(4, s.CyclopsSize * imgW);
+        return new[] { new EyePose(s.LeftX * imgW, s.LeftY * imgH, s.EyeWidth * unit, s.EyeHeight * unit, s.IrisSize * unit, s.Tilt) };
+    }
+
     /// <summary>Reach of the pupil inside the eye opening, in the eye's own (tilted) frame.</summary>
     public static (double Rx, double Ry) Range(EyePose p, double range) =>
         (Math.Max(0, p.Width / 2 - 0.35 * p.IrisR) * range, p.Height / 2 * 0.55 * range);

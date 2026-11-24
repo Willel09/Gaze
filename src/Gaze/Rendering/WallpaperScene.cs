@@ -23,6 +23,7 @@ public sealed class WallpaperScene : Canvas
     EyeSettings _s = new();
     double _blinkT = -1, _nextBlink = 4;
     bool _ready;
+    int _count = 2;
 
     public WallpaperScene()
     {
@@ -37,16 +38,15 @@ public sealed class WallpaperScene : Canvas
 
     public bool Ready => _ready;
 
-    /// <summary>Eye centers in scene pixels.</summary>
-    public (Point Left, Point Right) EyeCenters() =>
-        (new Point(_eyes[0].Pose.Cx, _eyes[0].Pose.Cy), new Point(_eyes[1].Pose.Cx, _eyes[1].Pose.Cy));
+    /// <summary>Eye centers in scene pixels (one in cyclops mode).</summary>
+    public Point[] EyeCenters() => Array.ConvertAll(Poses, p => new Point(p.Cx, p.Cy));
 
-    public (EyePose Left, EyePose Right) Poses => (_eyes[0].Pose, _eyes[1].Pose);
+    public EyePose[] Poses { get; private set; } = Array.Empty<EyePose>();
 
     public bool EyesVisible
     {
         get => _eyes[0].View.Visibility == Visibility.Visible;
-        set { foreach (var e in _eyes) e.View.Visibility = value ? Visibility.Visible : Visibility.Hidden; }
+        set { for (var i = 0; i < _count; i++) _eyes[i].View.Visibility = value ? Visibility.Visible : Visibility.Hidden; }
     }
 
     public void SetEyeOpacity(double o) { foreach (var e in _eyes) e.View.Opacity = o; }
@@ -64,20 +64,33 @@ public sealed class WallpaperScene : Canvas
         SetLeft(_image, ox); SetTop(_image, oy);
         _image.Width = iw * scale; _image.Height = ih * scale;
 
-        var (l, r) = EyeLayout.Compute(eyes, iw, ih);
-        var poses = new[] { l, r };
+        var poses = EyeLayout.Poses(eyes, iw, ih);
+        var scenePoses = new EyePose[poses.Length];
+        _count = poses.Length;
         for (var i = 0; i < 2; i++)
         {
+            if (i >= poses.Length) { _eyes[i].View.Visibility = Visibility.Hidden; continue; }
             var p = poses[i];
-            var colors = ColorSampler.Sample(bmp, p);
+            var colors = Override(ColorSampler.Sample(bmp, p), eyes);
             var sp = new EyePose(p.Cx * scale + ox, p.Cy * scale + oy, p.Width * scale, p.Height * scale, p.IrisR * scale, p.TiltDeg);
             var (rx, ry) = EyeLayout.Range(sp, eyes.Range);
             var st = _eyes[i];
             st.Pose = sp; st.Rx = rx; st.Ry = ry;
-            st.View.Configure(sp, eyes.LidShadow, eyes.PupilSize, colors);
+            scenePoses[i] = sp;
+            st.View.Configure(sp, eyes, colors);
             st.View.Visibility = eyes.IsCalibrated ? Visibility.Visible : Visibility.Hidden;
         }
+        Poses = scenePoses;
         _ready = eyes.IsCalibrated;
+    }
+
+    static EyeColors Override(EyeColors c, EyeSettings s) =>
+        c with { Iris = Parse(s.IrisColor) ?? c.Iris, Sclera = Parse(s.ScleraColor) ?? c.Sclera };
+
+    static Color? Parse(string? hex)
+    {
+        if (string.IsNullOrWhiteSpace(hex)) return null;
+        try { return (Color)ColorConverter.ConvertFromString(hex); } catch { return null; }
     }
 
     /// <summary>Advance one frame. cursor is in scene pixels. Returns true if anything moved (so callers can skip idle frames).</summary>
@@ -88,8 +101,9 @@ public sealed class WallpaperScene : Canvas
         var smooth = GazeMath.SmoothTime(_s.Smoothness);
         var moved = false;
 
-        foreach (var e in _eyes)
+        for (var i = 0; i < _count; i++)
         {
+            var e = _eyes[i];
             var (lx, ly) = GazeMath.Rotate(cursor.X - e.Pose.Cx, cursor.Y - e.Pose.Cy, -e.Pose.TiltDeg);
             var (tx, ty) = GazeMath.Target(lx, ly, e.Rx, e.Ry, reach);
             GazeMath.SmoothDamp(ref e.X, ref e.Vx, tx, smooth, dt);
@@ -116,7 +130,7 @@ public sealed class WallpaperScene : Canvas
         const double dur = 0.17;
         var t = _blinkT / dur;
         var amount = t >= 1 ? 0 : 1 - Math.Abs(2 * t - 1); // close then open
-        foreach (var e in _eyes) e.View.SetBlink(amount);
+        for (var i = 0; i < _count; i++) _eyes[i].View.SetBlink(amount);
         if (t >= 1)
         {
             _blinkT = -1;

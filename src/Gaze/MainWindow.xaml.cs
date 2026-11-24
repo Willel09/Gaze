@@ -27,7 +27,8 @@ public partial class MainWindow : Window
 
     EyeSettings E => _app.Settings.Eyes;
     bool Calibrating => ModeCalibrate.IsChecked == true;
-    int Selected => PickRight.IsChecked == true ? 1 : 0;
+    int Selected => !E.Cyclops && PickRight.IsChecked == true ? 1 : 0;
+    bool _building;
 
     public MainWindow(AppController app)
     {
@@ -49,6 +50,9 @@ public partial class MainWindow : Window
         Bind(SlSens, E.Sensitivity, v => E.Sensitivity = v);
         Bind(SlRange, E.Range, v => E.Range = v);
         Bind(SlSmooth, E.Smoothness, v => E.Smoothness = v);
+        Bind(SlCyclops, E.CyclopsSize, v => E.CyclopsSize = v);
+        BuildSwatches();
+        SyncAppearance();
         BlinkSwitch.IsChecked = E.Blink;
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
         StartSwitch.IsChecked = _app.Settings.StartWithWindows;
@@ -56,6 +60,7 @@ public partial class MainWindow : Window
         LoadImage();
         UpdateStatus();
         UpdateMode();
+        ApplyCyclopsUi();
 
         SourceInitialized += (_, _) => DarkTitleBar();
         Loaded += (_, _) => { _loaded = true; Intro(); LayoutStage(); };
@@ -168,14 +173,13 @@ public partial class MainWindow : Window
 
         if (E.IsCalibrated)
         {
-            var (l, r) = _scene.Poses;
-            AddEyeGuide(l, accent, Selected == 0);
-            AddEyeGuide(r, accent, Selected == 1);
+            var poses = _scene.Poses;
+            for (var i = 0; i < poses.Length; i++) AddEyeGuide(poses[i], accent, Selected == i);
         }
         else
         {
             if (E.LeftSet) AddCross(E.LeftX * W, E.LeftY * H, accent, Selected == 0);
-            if (E.RightSet) AddCross(E.RightX * W, E.RightY * H, accent, Selected == 1);
+            if (E.RightSet && !E.Cyclops) AddCross(E.RightX * W, E.RightY * H, accent, Selected == 1);
         }
     }
 
@@ -213,19 +217,20 @@ public partial class MainWindow : Window
         _drag = -1;
         var best = 28.0;
         if (E.LeftSet) { var d = Dist(p, E.LeftX * W, E.LeftY * H); if (d < best) { best = d; _drag = 0; } }
-        if (E.RightSet) { var d = Dist(p, E.RightX * W, E.RightY * H); if (d < best) { best = d; _drag = 1; } }
+        if (E.RightSet && !E.Cyclops) { var d = Dist(p, E.RightX * W, E.RightY * H); if (d < best) { best = d; _drag = 1; } }
 
         if (_drag < 0)
         {
             _drag = Selected;
             SetEye(_drag, p);
             // After the first eye, jump to the other one so two clicks finish the job.
-            if (_drag == 0 && !E.RightSet) PickRight.IsChecked = true;
+            if (E.Cyclops) { }
+            else if (_drag == 0 && !E.RightSet) PickRight.IsChecked = true;
             else if (_drag == 1 && !E.LeftSet) PickLeft.IsChecked = true;
         }
         else
         {
-            (_drag == 0 ? PickLeft : PickRight).IsChecked = true;
+            if (!E.Cyclops) (_drag == 0 ? PickLeft : PickRight).IsChecked = true;
         }
         StageGrid.CaptureMouse();
         e.Handled = true;
@@ -277,9 +282,12 @@ public partial class MainWindow : Window
     {
         LeftMark.Visibility = E.LeftSet ? Visibility.Visible : Visibility.Collapsed;
         RightMark.Visibility = E.RightSet ? Visibility.Visible : Visibility.Collapsed;
-        EyeHint.Text = !E.LeftSet || !E.RightSet
-            ? $"Click the centre of the {(Selected == 0 ? "left" : "right")} eye on the photo. Drag a marker to adjust it, or use the arrow keys."
-            : "Both eyes are marked. Fine-tune the shape, then switch to Preview.";
+        EyeHint.Text = E.Cyclops
+            ? (E.LeftSet ? "The eye is marked. Set its size, fine-tune the shape, then switch to Preview."
+                         : "Click the centre of the eye on the photo. Drag the marker to adjust it, or use the arrow keys.")
+            : !E.LeftSet || !E.RightSet
+                ? $"Click the centre of the {(Selected == 0 ? "left" : "right")} eye on the photo. Drag a marker to adjust it, or use the arrow keys."
+                : "Both eyes are marked. Fine-tune the shape, then switch to Preview.";
         UpdateMode();
     }
 
@@ -320,12 +328,83 @@ public partial class MainWindow : Window
             PickLeft.IsChecked = true;
             ModeCalibrate.IsChecked = true;
             LoadImage();
-            Toast("Now mark the left and right eye");
+            Toast(E.Cyclops ? "Now click the eye" : "Now mark the left and right eye");
         }
         catch (Exception ex)
         {
             Toast("Could not open that image: " + ex.Message);
         }
+    }
+
+    // ---- cyclops + appearance ---------------------------------------------------------------------------------
+
+    static readonly (string? Hex, string Name)[] IrisPalette =
+    {
+        (null, "Auto"), ("#6B4A2F", "Brown"), ("#8A6A2B", "Hazel"), ("#4F7A3A", "Green"), ("#3E7BD6", "Blue"),
+        ("#7E8A94", "Grey"), ("#C98A1E", "Amber"), ("#B3262E", "Red"), ("#7B4FD1", "Violet"), ("#18B8C9", "Cyan"),
+    };
+    static readonly (string? Hex, string Name)[] ScleraPalette =
+    {
+        (null, "Auto"), ("#F2F2F4", "White"), ("#EDE3D0", "Warm"), ("#E9B8B0", "Bloodshot"),
+        ("#E8D77A", "Yellow"), ("#9FD6FF", "Ice"), ("#15151A", "Black"),
+    };
+
+    void BuildSwatches()
+    {
+        Fill(IrisSwatches, "iris", IrisPalette, h => E.IrisColor = h);
+        Fill(ScleraSwatches, "sclera", ScleraPalette, h => E.ScleraColor = h);
+    }
+
+    void Fill(Panel host, string group, (string? Hex, string Name)[] palette, Action<string?> set)
+    {
+        foreach (var (hex, name) in palette)
+        {
+            var rb = new RadioButton
+            {
+                GroupName = group, Style = (Style)FindResource("Swatch"), ToolTip = name, Tag = hex,
+                Background = hex == null ? (Brush)FindResource("FillSelected") : new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
+                Content = hex == null ? "A" : null,
+            };
+            rb.Checked += (_, _) => { if (_building) return; set(hex); OnEyesChanged(); };
+            host.Children.Add(rb);
+        }
+    }
+
+    void SyncAppearance()
+    {
+        _building = true;
+        foreach (var (panel, current) in new[] { (IrisSwatches, E.IrisColor), (ScleraSwatches, E.ScleraColor) })
+            foreach (RadioButton rb in panel.Children)
+                rb.IsChecked = string.Equals(rb.Tag as string, current, StringComparison.OrdinalIgnoreCase);
+        (E.Pupil switch { PupilShape.Slit => PupilSlit, PupilShape.Horizontal => PupilWide, _ => PupilRound }).IsChecked = true;
+        GlintSwitch.IsChecked = E.Glint;
+        CyclopsSwitch.IsChecked = E.Cyclops;
+        SlCyclops.Value = E.CyclopsSize;
+        _building = false;
+    }
+
+    void OnPupil(object sender, RoutedEventArgs e)
+    {
+        if (_building || !IsLoaded) return;
+        E.Pupil = PupilSlit.IsChecked == true ? PupilShape.Slit : PupilWide.IsChecked == true ? PupilShape.Horizontal : PupilShape.Round;
+        OnEyesChanged();
+    }
+
+    void OnGlint(object sender, RoutedEventArgs e) { E.Glint = GlintSwitch.IsChecked == true; OnEyesChanged(); }
+
+    void OnCyclops(object sender, RoutedEventArgs e)
+    {
+        E.Cyclops = CyclopsSwitch.IsChecked == true;
+        if (E.Cyclops) PickLeft.IsChecked = true;
+        ApplyCyclopsUi();
+        RefreshMarks();
+        OnEyesChanged();
+    }
+
+    void ApplyCyclopsUi()
+    {
+        EyePicker.Visibility = E.Cyclops ? Visibility.Collapsed : Visibility.Visible;
+        SlCyclops.Visibility = E.Cyclops ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void OnAutoFit(object sender, RoutedEventArgs e)
@@ -368,6 +447,7 @@ public partial class MainWindow : Window
         var d = _app.Settings.Eyes;
         Bind2(SlWidth, d.EyeWidth); Bind2(SlHeight, d.EyeHeight); Bind2(SlIris, d.IrisSize); Bind2(SlPupil, d.PupilSize);
         Bind2(SlTilt, d.Tilt); Bind2(SlLid, d.LidShadow); Bind2(SlSens, d.Sensitivity); Bind2(SlRange, d.Range); Bind2(SlSmooth, d.Smoothness);
+        SyncAppearance(); ApplyCyclopsUi();
         BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false;
         LoadImage();
         Toast("Settings reset");
