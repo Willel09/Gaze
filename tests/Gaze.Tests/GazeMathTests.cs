@@ -109,4 +109,17 @@ public class GazeMathTests
         Assert.False(s.IsCalibrated);
         Assert.Equal(2, EyeLayout.Poses(s, 1000, 800).Length);
     }
+
+    [Theory]
+    [InlineData("v1.2.0", true)]
+    [InlineData("v1.1.1", true)]
+    [InlineData("1.1.0", false)]
+    [InlineData("v1.0.9", false)]
+    [InlineData("v2.0.0-beta", true)]
+    [InlineData("nonsense", false)]
+    [InlineData(null, false)]
+    public void Update_Detection(string? tag, bool newer)
+    {
+        Assert.Equal(newer, VersionCompare.IsNewer(tag, new Version(1, 1, 0, 0)));
+    }
 }

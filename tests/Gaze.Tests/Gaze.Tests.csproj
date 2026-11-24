@@ -10,6 +10,7 @@
     <Compile Include="..\..\src\Gaze\Core\GazeMath.cs" Link="GazeMath.cs" />
     <Compile Include="..\..\src\Gaze\Core\EyeLayout.cs" Link="EyeLayout.cs" />
     <Compile Include="..\..\src\Gaze\Core\Settings.cs" Link="Settings.cs" />
+    <Compile Include="..\..\src\Gaze\Core\VersionCompare.cs" Link="VersionCompare.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />

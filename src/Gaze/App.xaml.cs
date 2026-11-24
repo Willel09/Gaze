@@ -18,7 +18,11 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        _mutex = new Mutex(true, "Gaze.SingleInstance.v1", out var first);
+        // After a self-update the old process is still shutting down: wait for it to release the lock.
+        var updated = e.Args.Contains("--updated");
+        bool first;
+        if (updated) { _mutex = new Mutex(false, "Gaze.SingleInstance.v1"); try { first = _mutex.WaitOne(10000); } catch (AbandonedMutexException) { first = true; } }
+        else _mutex = new Mutex(true, "Gaze.SingleInstance.v1", out first);
         if (!first)
         {
             try { EventWaitHandle.OpenExisting("Gaze.Show.v1").Set(); } catch { /* first instance is starting up */ }
@@ -33,6 +37,7 @@ public partial class App : Application
         _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, "Gaze.Show.v1");
         ThreadPool.RegisterWaitForSingleObject(_showSignal, (_, _) => Dispatcher.BeginInvoke(ShowMain), null, Timeout.Infinite, false);
 
+        Desktop.Updater.CleanUp();
         Controller = new AppController();
         Controller.StatusChanged += SyncTray;
         Controller.Restart();

@@ -54,7 +54,7 @@ public sealed class AppController : IDisposable
         return Path.Combine(SettingsStore.Dir, name);
     }
 
-    public bool Apply()
+    public async System.Threading.Tasks.Task<bool> ApplyAsync()
     {
         var path = WallpaperPath;
         if (path == null || !Settings.Eyes.IsCalibrated) return false;
@@ -70,6 +70,8 @@ public sealed class AppController : IDisposable
         Settings.Applied = true;
         Settings.TrackingEnabled = true;
         Save();
+        // Explorer repaints the wallpaper a moment after it changes; attach after that so it cannot paint over the overlay.
+        await System.Threading.Tasks.Task.Delay(1200);
         return Restart();
     }
 
@@ -86,10 +88,17 @@ public sealed class AppController : IDisposable
         LastError = null;
         var path = WallpaperPath;
         if (!Settings.Applied || !Settings.TrackingEnabled || path == null) { Host.Stop(); StatusChanged?.Invoke(); return true; }
-        var ok = Host.Start(path, Settings.Eyes);
+        var ok = Host.Start(path, Settings.Eyes, Settings.CompatibilityAttach);
         if (!ok) LastError = Host.Error ?? "Could not attach to the desktop.";
         StatusChanged?.Invoke();
         return ok;
+    }
+
+    public void SetCompatibility(bool on)
+    {
+        Settings.CompatibilityAttach = on;
+        Save();
+        Restart();
     }
 
     public void SetAutostart(bool on)

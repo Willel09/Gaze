@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 using Gaze.Core;
 using Gaze.Desktop;
@@ -56,6 +57,7 @@ public partial class MainWindow : Window
         BlinkSwitch.IsChecked = E.Blink;
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
         StartSwitch.IsChecked = _app.Settings.StartWithWindows;
+        CompatSwitch.IsChecked = _app.Settings.CompatibilityAttach;
 
         LoadImage();
         UpdateStatus();
@@ -69,6 +71,8 @@ public partial class MainWindow : Window
             if (IsVisible) FrameClock.Add(OnFrame); else FrameClock.Remove(OnFrame);
         };
         Closing += OnClosing;
+        VersionText.Text = "Version " + Updater.Current.ToString(3);
+        Loaded += async (_, _) => { await Task.Delay(4000); await CheckUpdate(silent: true); };
     }
 
     // ---- window chrome ----------------------------------------------------------------------------------------
@@ -424,15 +428,82 @@ public partial class MainWindow : Window
         _app.SetTracking(on);
     }
 
+    UpdateInfo? _update;
+    bool _busy;
+
+    async void OnUpdate(object sender, RoutedEventArgs e)
+    {
+        if (_busy) return;
+        if (_update == null) { await CheckUpdate(silent: false); return; }
+
+        _busy = true;
+        UpdateBtn.IsEnabled = false;
+        try
+        {
+            var p = new Progress<double>(v => UpdateLabel.Text = $"Downloading {(int)(v * 100)}%");
+            await Updater.InstallAsync(_update, p);
+            UpdateLabel.Text = "Restarting";
+            (Application.Current as App)?.Quit();
+        }
+        catch (Exception ex)
+        {
+            Log.Write("update failed: " + ex);
+            Toast("Update failed: " + ex.Message);
+            UpdateLabel.Text = "Try update again";
+            UpdateBtn.IsEnabled = true;
+            _busy = false;
+        }
+    }
+
+    async Task CheckUpdate(bool silent)
+    {
+        if (_busy) return;
+        _busy = true;
+        if (!silent) UpdateLabel.Text = "Checking";
+        try
+        {
+            _update = await Updater.CheckAsync();
+            if (_update != null)
+            {
+                UpdateLabel.Text = "Update to " + _update.Tag;
+                UpdateBtn.Style = (Style)FindResource("PrimaryButton");
+                if (silent) Toast("A new version is available: " + _update.Tag);
+            }
+            else
+            {
+                UpdateLabel.Text = silent ? "Check for updates" : "You have the latest version";
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Write("update check failed: " + ex.Message);
+            UpdateLabel.Text = "Check for updates";
+            if (!silent) Toast("Could not check for updates. Are you online?");
+        }
+        finally { _busy = false; }
+    }
+
+    void OnCompat(object sender, RoutedEventArgs e) => _app.SetCompatibility(CompatSwitch.IsChecked == true);
+
+    void OnOpenLog(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Log.Write("log opened by user");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Log.Path) { UseShellExecute = true });
+        }
+        catch { Toast("No log yet. Apply to desktop first"); }
+    }
+
     void OnStartSwitch(object sender, RoutedEventArgs e) => _app.SetAutostart(StartSwitch.IsChecked == true);
 
-    void OnApply(object sender, RoutedEventArgs e)
+    async void OnApply(object sender, RoutedEventArgs e)
     {
         if (_bmp == null) { Toast("Choose a wallpaper first"); return; }
         if (!E.IsCalibrated) { Toast("Mark both eyes first"); return; }
         _save.Stop(); _app.Save();
         Mouse.OverrideCursor = Cursors.Wait;
-        var ok = _app.Apply();
+        var ok = await _app.ApplyAsync();
         Mouse.OverrideCursor = null;
         TrackSwitch.IsChecked = _app.Settings.TrackingEnabled && ok;
         Toast(ok ? "Applied. Show the desktop (Win+D) and move your mouse" : _app.Host.Error ?? "Could not attach to the desktop");
@@ -448,7 +519,7 @@ public partial class MainWindow : Window
         Bind2(SlWidth, d.EyeWidth); Bind2(SlHeight, d.EyeHeight); Bind2(SlIris, d.IrisSize); Bind2(SlPupil, d.PupilSize);
         Bind2(SlTilt, d.Tilt); Bind2(SlLid, d.LidShadow); Bind2(SlSens, d.Sensitivity); Bind2(SlRange, d.Range); Bind2(SlSmooth, d.Smoothness);
         SyncAppearance(); ApplyCyclopsUi();
-        BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false;
+        BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false; CompatSwitch.IsChecked = false;
         LoadImage();
         Toast("Settings reset");
     }

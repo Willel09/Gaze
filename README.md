@@ -23,13 +23,15 @@
 
 Pick a photo of anyone, mark their eyes, and set it as your wallpaper. Whenever you are looking at the bare desktop, their pupils follow your mouse. Open a window and they stop. Press `Win` + `D` and they are watching again.
 
-Gaze is one self-contained `.exe`. No installer, no .NET to install, no account, nothing leaves your PC.
+Gaze is one self-contained `.exe`. No installer, no .NET to install, no account. Your photos never leave your PC; the only network request is the update check to GitHub.
 
 ## Install
 
 1. Open the [latest release](https://github.com/Willel09/Olles-gon/releases/latest) and download `Gaze-…-win-x64.exe`.
 2. Run it. If SmartScreen warns about an unrecognised app, choose **More info**, then **Run anyway**. The exe is not code-signed yet.
 3. Choose a wallpaper, click both eyes, press **Apply to desktop**.
+
+**Updating:** open Gaze and press **Check for updates** (it also checks quietly on start). It downloads the new exe from the latest release and restarts itself, no reinstall. Versions before 1.1.0 have no updater, so replace those once by hand.
 
 Needs 64-bit Windows 10 (1809 or later) or Windows 11. Close the window and Gaze keeps running in the tray, Quit lives in the tray menu.
 
@@ -76,6 +78,12 @@ flowchart LR
 - Windows 11 24H2 moved `WorkerW` inside `Progman`. Both layouts are handled.
 
 Read the full write-up, including the Windows limits, in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## If the eyes do not show
+
+1. Press **Apply to desktop** again and wait two seconds.
+2. Turn on **Compatibility mode** in the System section. It attaches to the desktop a different way that some Windows 11 builds need.
+3. Press **Open log file** and attach it, with your Windows version, to an [issue](https://github.com/Willel09/Olles-gon/issues).
 
 ## Performance
 

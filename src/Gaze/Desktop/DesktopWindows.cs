@@ -12,12 +12,20 @@ internal static class DesktopWindows
     /// The "WorkerW" trick: asking Progman to spawn a WorkerW places a window behind the icons.
     /// Windows 11 24H2 moved it inside Progman, so both layouts are handled.
     /// </summary>
-    public static IntPtr FindWallpaperParent()
+    public static IntPtr FindWallpaperParent(bool compatibility, out IntPtr insertAfter)
     {
+        insertAfter = IntPtr.Zero;
         var progman = Native.FindWindow("Progman", null);
         if (progman == IntPtr.Zero) return IntPtr.Zero;
 
         Native.SendMessageTimeout(progman, 0x052C, new IntPtr(0xD), new IntPtr(1), Native.SMTO_NORMAL, 1000, out _);
+
+        // Compatibility: child of Progman, stacked just under the icon list when it lives there (24H2).
+        if (compatibility)
+        {
+            insertAfter = Native.FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null);
+            return progman;
+        }
 
         // 24H2 layout: SHELLDLL_DefView and WorkerW are both children of Progman.
         if (Native.FindWindowEx(progman, IntPtr.Zero, "SHELLDLL_DefView", null) != IntPtr.Zero)

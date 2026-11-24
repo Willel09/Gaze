@@ -26,7 +26,10 @@ public sealed class WallpaperHost : IDisposable
 
     readonly List<Overlay> _overlays = new();
     readonly System.Windows.Threading.DispatcherTimer _probe = new() { Interval = TimeSpan.FromMilliseconds(250) };
-    IntPtr _parent;
+    IntPtr _parent, _insertAfter;
+    bool _compat;
+    readonly System.Windows.Threading.DispatcherTimer _nudge = new() { Interval = TimeSpan.FromMilliseconds(900) };
+    int _nudges;
     bool _clocked;
     bool _locked;
     string? _path;
@@ -37,16 +40,51 @@ public sealed class WallpaperHost : IDisposable
     public bool AnyActive { get; private set; }
     public string? Error { get; private set; }
 
-    public WallpaperHost() { _probe.Tick += (_, _) => Probe(); }
+    public WallpaperHost()
+    {
+        _probe.Tick += (_, _) => Probe();
+        // Explorer may repaint the wallpaper after it changes and cover a child window that has nothing new to draw, so repaint a few times.
+        _nudge.Tick += (_, _) =>
+        {
+            Redraw();
+            if (++_nudges >= 3) { _nudge.Stop(); Diagnose(); }
+        };
+    }
 
-    public bool Start(string imagePath, EyeSettings eyes)
+    void Redraw()
+    {
+        foreach (var o in _overlays)
+            Native.RedrawWindow(o.Source.Handle, IntPtr.Zero, IntPtr.Zero, Native.RDW_INVALIDATE | Native.RDW_ALLCHILDREN | Native.RDW_UPDATENOW);
+    }
+
+    void Diagnose()
+    {
+        Log.Write($"parent {_parent} class={Native.ClassName(_parent)} visible={Native.IsWindowVisible(_parent)}");
+        foreach (var o in _overlays)
+        {
+            Native.GetWindowRect(o.Source.Handle, out var r);
+            var cs = o.Scene.EyeCenters();
+            var probe = cs.Length > 0 ? DescribeAt(o.Rect.X + (int)cs[0].X, o.Rect.Y + (int)cs[0].Y) : "-";
+            Log.Write($"overlay {o.Source.Handle} visible={Native.IsWindowVisible(o.Source.Handle)} rect=({r.Left},{r.Top},{r.Right},{r.Bottom}) active={o.Active} firstEyeScreenHit={probe}");
+        }
+    }
+
+    static string DescribeAt(int x, int y)
+    {
+        var h = Native.WindowFromPoint(new Native.POINT { X = x, Y = y });
+        var root = h == IntPtr.Zero ? IntPtr.Zero : Native.GetAncestor(h, Native.GA_ROOT);
+        return $"{Native.ClassName(h)} (root {Native.ClassName(root)})";
+    }
+
+    public bool Start(string imagePath, EyeSettings eyes, bool compatibility = false)
     {
         Stop();
-        _path = imagePath; _eyes = eyes; Error = null;
+        _path = imagePath; _eyes = eyes; _compat = compatibility; Error = null;
         try
         {
-            _parent = DesktopWindows.FindWallpaperParent();
-            if (_parent == IntPtr.Zero) { Error = "Could not find the desktop wallpaper layer."; return false; }
+            _parent = DesktopWindows.FindWallpaperParent(_compat, out _insertAfter);
+            Log.Write($"start os={Environment.OSVersion.Version} compat={_compat} parent={_parent} class={Native.ClassName(_parent)} insertAfter={_insertAfter}");
+            if (_parent == IntPtr.Zero) { Error = "Could not find the desktop wallpaper layer."; Log.Write(Error); return false; }
             try { Native.SetThreadDpiHostingBehavior(1); } catch { /* Windows 10 before 1803 */ }
 
             var (iw, ih) = ImageLoader.Probe(imagePath);
@@ -62,11 +100,13 @@ public sealed class WallpaperHost : IDisposable
         catch (Exception ex)
         {
             Error = ex.Message;
+            Log.Write("start failed: " + ex);
             Stop();
             return false;
         }
         _probe.Start();
         Probe();
+        _nudges = 0; _nudge.Stop(); _nudge.Start();
         return true;
     }
 
@@ -92,6 +132,8 @@ public sealed class WallpaperHost : IDisposable
         var dpi = src.CompositionTarget.TransformToDevice.M11;
         scene.LayoutTransform = new ScaleTransform(1 / dpi, 1 / dpi);
         src.RootVisual = scene;
+        if (_insertAfter != IntPtr.Zero)
+            Native.SetWindowPos(src.Handle, _insertAfter, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
         return new Overlay { Source = src, Scene = scene, Rect = m };
     }
 
@@ -110,7 +152,8 @@ public sealed class WallpaperHost : IDisposable
         if (_overlays.Count == 0) return;
         if (!Native.IsWindow(_parent) && _path != null && _eyes != null)
         {
-            Start(_path, _eyes);
+            Log.Write("parent window lost, re-attaching");
+            Start(_path, _eyes, _compat);
             return;
         }
 
@@ -129,6 +172,7 @@ public sealed class WallpaperHost : IDisposable
         if (any != AnyActive)
         {
             AnyActive = any;
+            if (any) Redraw();
             ActiveChanged?.Invoke();
         }
         if (any && !_clocked) { FrameClock.Add(Tick); _clocked = true; }
@@ -147,7 +191,7 @@ public sealed class WallpaperHost : IDisposable
 
     public void Stop()
     {
-        _probe.Stop();
+        _probe.Stop(); _nudge.Stop();
         if (_clocked) { FrameClock.Remove(Tick); _clocked = false; }
         foreach (var o in _overlays) { o.Source.RootVisual = null; o.Source.Dispose(); }
         _overlays.Clear();
