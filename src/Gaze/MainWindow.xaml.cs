@@ -30,6 +30,8 @@ public partial class MainWindow : Window
     bool Calibrating => ModeCalibrate.IsChecked == true;
     int Selected => !E.Cyclops && PickRight.IsChecked == true ? 1 : 0;
     bool _building;
+    MiniEye? _logo, _emptyEye;
+    bool _micaOn;
 
     public MainWindow(AppController app)
     {
@@ -54,7 +56,13 @@ public partial class MainWindow : Window
         Bind(SlCyclops, E.CyclopsSize, v => E.CyclopsSize = v);
         BuildSwatches();
         SyncAppearance();
+        Bind(SlDroop, E.Droop, v => E.Droop = v);
         BlinkSwitch.IsChecked = E.Blink;
+        ClickSwitch.IsChecked = E.ClickBlink;
+        IdleSwitch.IsChecked = E.IdleLife;
+        BuildLooks();
+        _logo = new MiniEye(LogoEye);
+        _emptyEye = new MiniEye(EmptyEye);
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
         StartSwitch.IsChecked = _app.Settings.StartWithWindows;
 
@@ -82,6 +90,26 @@ public partial class MainWindow : Window
         var on = 1;
         Native.DwmSetWindowAttribute(h, 20, ref on, sizeof(int)); // Windows 10 20H1+ and 11
         Native.DwmSetWindowAttribute(h, 19, ref on, sizeof(int)); // older Windows 10 builds
+
+        // Windows 11: Mica, the soft wallpaper-tinted window material. Falls back to the plain dark surface elsewhere.
+        if (Environment.OSVersion.Version.Build >= 22621)
+        {
+            try
+            {
+                var mar = new Native.MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+                var backdrop = 2; // DWMSBT_MAINWINDOW (Mica)
+                if (Native.DwmExtendFrameIntoClientArea(h, ref mar) == 0
+                    && Native.DwmSetWindowAttribute(h, 38, ref backdrop, sizeof(int)) == 0
+                    && HwndSource.FromHwnd(h) is { } src)
+                {
+                    src.CompositionTarget.BackgroundColor = Colors.Transparent;
+                    Background = Brushes.Transparent;
+                    SidebarPanel.Background = new SolidColorBrush(Color.FromArgb(0xA6, 0x1C, 0x1C, 0x1E));
+                    _micaOn = true;
+                }
+            }
+            catch { /* keep the solid background */ }
+        }
     }
 
     void Intro()
@@ -124,6 +152,7 @@ public partial class MainWindow : Window
             try { _bmp = ImageLoader.Load(path, 3200); }
             catch (Exception ex) { Toast("Could not open the saved wallpaper: " + ex.Message); }
         }
+        try { Ambient.Source = path != null ? ImageLoader.Load(path, 360) : null; } catch { Ambient.Source = null; }
         FileName.Text = _bmp != null ? (_app.Settings.WallpaperName ?? "Wallpaper") : "JPG, PNG, WebP or BMP";
         EmptyState.Visibility = _bmp == null ? Visibility.Visible : Visibility.Collapsed;
         StageFrame.Visibility = _bmp == null ? Visibility.Collapsed : Visibility.Visible;
@@ -136,7 +165,7 @@ public partial class MainWindow : Window
     void LayoutStage()
     {
         if (_bmp == null || !_loaded && !IsLoaded) return;
-        double aw = StageHost.ActualWidth - 2, ah = StageHost.ActualHeight - 2;
+        double aw = StageHost.ActualWidth - 72, ah = StageHost.ActualHeight - 72;
         if (aw < 40 || ah < 40) return;
         var k = Math.Min(aw / _bmp.PixelWidth, ah / _bmp.PixelHeight);
         double w = Math.Floor(_bmp.PixelWidth * k), h = Math.Floor(_bmp.PixelHeight * k);
@@ -160,9 +189,15 @@ public partial class MainWindow : Window
 
     void OnFrame(double dt)
     {
-        if (WindowState == WindowState.Minimized || !_scene.Ready || !StageFrame.IsVisible) return;
+        if (WindowState == WindowState.Minimized) return;
         if (!Native.GetCursorPos(out var c)) return;
-        _scene.Update(StageGrid.PointFromScreen(new Point(c.X, c.Y)), dt);
+        var screen = new Point(c.X, c.Y);
+
+        _logo?.Update(LogoEye.PointFromScreen(screen), dt);
+        if (EmptyState.IsVisible) _emptyEye?.Update(EmptyEye.PointFromScreen(screen), dt);
+
+        if (!_scene.Ready || !StageFrame.IsVisible) return;
+        _scene.Update(StageGrid.PointFromScreen(screen), dt);
     }
 
     // ---- calibration guides -----------------------------------------------------------------------------------
@@ -236,19 +271,23 @@ public partial class MainWindow : Window
             if (!E.Cyclops) (_drag == 0 ? PickLeft : PickRight).IsChecked = true;
         }
         StageGrid.CaptureMouse();
+        ShowLoupe(p);
         e.Handled = true;
     }
 
     void OnStageMove(object sender, MouseEventArgs e)
     {
         if (_drag < 0 || e.LeftButton != MouseButtonState.Pressed) return;
-        SetEye(_drag, e.GetPosition(StageGrid));
+        var q = e.GetPosition(StageGrid);
+        SetEye(_drag, q);
+        ShowLoupe(q);
     }
 
     void OnStageUp(object sender, MouseButtonEventArgs e)
     {
         if (_drag < 0) return;
         _drag = -1;
+        Loupe.Visibility = Visibility.Collapsed;
         StageGrid.ReleaseMouseCapture();
         RefreshMarks();
     }
@@ -339,6 +378,63 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---- loupe ------------------------------------------------------------------------------------------------
+
+    /// <summary>A magnifier next to the pointer while placing or dragging an eye, for pixel-accurate marks.</summary>
+    void ShowLoupe(Point p)
+    {
+        if (Loupe.Background is not VisualBrush vb)
+        {
+            vb = new VisualBrush(SceneHost) { ViewboxUnits = BrushMappingMode.Absolute, Stretch = Stretch.Fill };
+            Loupe.Background = vb;
+        }
+        vb.Viewbox = new Rect(p.X - 18, p.Y - 18, 36, 36);
+        double lx = p.X + 28, ly = p.Y - 172;
+        if (ly < 4) ly = p.Y + 28;
+        if (lx + 140 > _scene.Width) lx = p.X - 168;
+        Loupe.Margin = new Thickness(Math.Max(4, lx), ly, 0, 0);
+        Loupe.Visibility = Visibility.Visible;
+    }
+
+    // ---- looks ------------------------------------------------------------------------------------------------
+
+    sealed record Look(string Name, string? Iris, string? Sclera, PupilShape Pupil, bool Glint, double Droop = 0, double PupilSize = 0.42);
+
+    static readonly Look[] Looks =
+    {
+        new("Natural", null, null, PupilShape.Round, true),
+        new("Cat", "#C9B02A", null, PupilShape.Slit, true),
+        new("Goat", "#C98A1E", null, PupilShape.Horizontal, true),
+        new("Demon", "#B3262E", "#15151A", PupilShape.Slit, false),
+        new("Robot", "#18B8C9", "#15151A", PupilShape.Round, false, 0, 0.28),
+        new("Ghost", "#9FD6FF", "#9FD6FF", PupilShape.Round, true, 0, 0.3),
+        new("Sleepy", null, null, PupilShape.Round, true, 0.38),
+        new("Alien", "#4F7A3A", "#15151A", PupilShape.Horizontal, true, 0, 0.5),
+    };
+
+    void BuildLooks()
+    {
+        foreach (var look in Looks)
+        {
+            var b = new Button { Content = look.Name, Style = (Style)FindResource("Chip") };
+            b.Click += (_, _) => ApplyLook(look);
+            LookChips.Children.Add(b);
+        }
+    }
+
+    void ApplyLook(Look l)
+    {
+        E.IrisColor = l.Iris; E.ScleraColor = l.Sclera; E.Pupil = l.Pupil; E.Glint = l.Glint;
+        E.Droop = l.Droop; E.PupilSize = l.PupilSize;
+        SlDroop.Value = l.Droop; SlPupil.Value = l.PupilSize;
+        SyncAppearance();
+        OnEyesChanged();
+        Toast(l.Name + " look applied");
+    }
+
+    void OnClickBlink(object sender, RoutedEventArgs e) { E.ClickBlink = ClickSwitch.IsChecked == true; OnEyesChanged(); }
+    void OnIdle(object sender, RoutedEventArgs e) { E.IdleLife = IdleSwitch.IsChecked == true; OnEyesChanged(); }
+
     // ---- cyclops + appearance ---------------------------------------------------------------------------------
 
     static readonly (string? Hex, string Name)[] IrisPalette =
@@ -368,6 +464,7 @@ public partial class MainWindow : Window
                 Background = hex == null ? (Brush)FindResource("FillSelected") : new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)),
                 Content = hex == null ? "A" : null,
             };
+            System.Windows.Automation.AutomationProperties.SetName(rb, (group == "iris" ? "Iris " : "Eye white ") + name);
             rb.Checked += (_, _) => { if (_building) return; set(hex); OnEyesChanged(); };
             host.Children.Add(rb);
         }
@@ -515,6 +612,7 @@ public partial class MainWindow : Window
         var d = _app.Settings.Eyes;
         Bind2(SlWidth, d.EyeWidth); Bind2(SlHeight, d.EyeHeight); Bind2(SlIris, d.IrisSize); Bind2(SlPupil, d.PupilSize);
         Bind2(SlTilt, d.Tilt); Bind2(SlLid, d.LidShadow); Bind2(SlSens, d.Sensitivity); Bind2(SlRange, d.Range); Bind2(SlSmooth, d.Smoothness);
+        SlDroop.Value = d.Droop; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife;
         SyncAppearance(); ApplyCyclopsUi();
         BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false;
         LoadImage();

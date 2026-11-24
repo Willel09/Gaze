@@ -15,13 +15,15 @@ public sealed class WallpaperScene : Canvas
         public EyeView View = new();
         public EyePose Pose;
         public double Rx, Ry;
-        public double X, Y, Vx, Vy;
+        public double X, Y, Vx, Vy, Focus = 1;
     }
 
     readonly Image _image = new();
     readonly EyeState[] _eyes = { new(), new() };
     EyeSettings _s = new();
     double _blinkT = -1, _nextBlink = 4;
+    double _idle, _wander, _sleep, _lid;
+    Point _last, _fake;
     bool _ready;
     int _count = 2;
 
@@ -104,6 +106,9 @@ public sealed class WallpaperScene : Canvas
         try { return (Color)ColorConverter.ConvertFromString(hex); } catch { return null; }
     }
 
+    /// <summary>Quick blink, used for mouse clicks.</summary>
+    public void TriggerBlink() { if (_ready && _blinkT < 0) _blinkT = 0; }
+
     /// <summary>Advance one frame. cursor is in scene pixels. Returns true if anything moved (so callers can skip idle frames).</summary>
     public bool Update(Point cursor, double dt)
     {
@@ -112,10 +117,38 @@ public sealed class WallpaperScene : Canvas
         var smooth = GazeMath.SmoothTime(_s.Smoothness);
         var moved = false;
 
+        // Idle life: after a few seconds without mouse movement the eyes look around by themselves,
+        // after a few minutes they fall asleep. Any movement wakes them.
+        var target = cursor;
+        var sleepGoal = 0.0;
+        if (_s.IdleLife)
+        {
+            var dx = cursor.X - _last.X; var dy = cursor.Y - _last.Y;
+            _last = cursor;
+            if (dx * dx + dy * dy > 2.25) _idle = 0; else _idle += dt;
+
+            if (_idle > 180) sleepGoal = 1;
+            else if (_idle > 6)
+            {
+                _wander -= dt;
+                if (_wander <= 0)
+                {
+                    var mx = (_eyes[0].Pose.Cx + _eyes[_count - 1].Pose.Cx) / 2;
+                    var my = (_eyes[0].Pose.Cy + _eyes[_count - 1].Pose.Cy) / 2;
+                    var ang = Random.Shared.NextDouble() * Math.PI * 2;
+                    var r = reach * (0.25 + Random.Shared.NextDouble() * 1.1);
+                    _fake = new Point(mx + Math.Cos(ang) * r, my + Math.Sin(ang) * r * 0.7);
+                    _wander = 1.6 + Random.Shared.NextDouble() * 3.4;
+                }
+                target = _fake;
+            }
+        }
+        else _idle = 0;
+
         for (var i = 0; i < _count; i++)
         {
             var e = _eyes[i];
-            var (lx, ly) = GazeMath.Rotate(cursor.X - e.Pose.Cx, cursor.Y - e.Pose.Cy, -e.Pose.TiltDeg);
+            var (lx, ly) = GazeMath.Rotate(target.X - e.Pose.Cx, target.Y - e.Pose.Cy, -e.Pose.TiltDeg);
             var (tx, ty) = GazeMath.Target(lx, ly, e.Rx, e.Ry, reach);
             GazeMath.SmoothDamp(ref e.X, ref e.Vx, tx, smooth, dt);
             GazeMath.SmoothDamp(ref e.Y, ref e.Vy, ty, smooth, dt);
@@ -124,29 +157,38 @@ public sealed class WallpaperScene : Canvas
                 e.View.SetOffset(e.X, e.Y);
                 moved = true;
             }
+
+            // The pupil contracts a little when you come close, like focusing on something near.
+            var close = Math.Clamp(1 - Math.Sqrt(lx * lx + ly * ly) / (reach * 0.7), 0, 1);
+            var focus = 1 - 0.22 * close;
+            if (Math.Abs(focus - e.Focus) > 0.004) { e.Focus = focus; e.View.SetPupilScale(focus); moved = true; }
         }
-        return UpdateBlink(dt) | moved;
+
+        _sleep += (sleepGoal - _sleep) * Math.Min(1, dt * (sleepGoal > _sleep ? 0.9 : 9));
+        if (_sleep < 0.003) _sleep = 0;
+        return UpdateLid(dt) | moved;
     }
 
-    bool UpdateBlink(double dt)
+    bool UpdateLid(double dt)
     {
-        if (!_s.Blink) return false;
-        if (_blinkT < 0)
+        var blink = 0.0;
+        if (_blinkT < 0 && _s.Blink)
         {
             _nextBlink -= dt;
-            if (_nextBlink > 0) return false;
-            _blinkT = 0;
+            if (_nextBlink <= 0) _blinkT = 0;
         }
-        _blinkT += dt;
-        const double dur = 0.17;
-        var t = _blinkT / dur;
-        var amount = t >= 1 ? 0 : 1 - Math.Abs(2 * t - 1); // close then open
-        for (var i = 0; i < _count; i++) _eyes[i].View.SetBlink(amount);
-        if (t >= 1)
+        if (_blinkT >= 0)
         {
-            _blinkT = -1;
-            _nextBlink = 2.8 + Random.Shared.NextDouble() * 4.5;
+            _blinkT += dt;
+            const double dur = 0.17;
+            var t = _blinkT / dur;
+            blink = t >= 1 ? 0 : 1 - Math.Abs(2 * t - 1); // close then open
+            if (t >= 1) { _blinkT = -1; _nextBlink = 2.8 + Random.Shared.NextDouble() * 4.5; }
         }
+        var lid = Math.Max(blink, _sleep * 0.97);
+        if (Math.Abs(lid - _lid) < 0.002) return false;
+        _lid = lid;
+        for (var i = 0; i < _count; i++) _eyes[i].View.SetBlink(lid);
         return true;
     }
 }

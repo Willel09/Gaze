@@ -44,6 +44,7 @@ public sealed class WallpaperHost : IDisposable
     IntPtr _parent, _insertAfter;
     bool _clocked, _locked;
     int _nudges;
+    bool _wasDown;
     string? _path;
     EyeSettings? _eyes;
 
@@ -254,6 +255,10 @@ public sealed class WallpaperHost : IDisposable
     void Tick(double dt)
     {
         if (!Native.GetCursorPos(out var c)) return;
+        var down = (Native.GetAsyncKeyState(0x01) & 0x8000) != 0;
+        if (down && !_wasDown && _eyes?.ClickBlink == true)
+            foreach (var o in _overlays) if (o.Active) o.Scene.TriggerBlink();
+        _wasDown = down;
         foreach (var o in _overlays)
             if (o.Active) o.Scene.Update(new Point(c.X - o.Rect.X, c.Y - o.Rect.Y), dt);
     }

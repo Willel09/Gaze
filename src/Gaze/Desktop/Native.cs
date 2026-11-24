@@ -53,6 +53,10 @@ internal static class Native
     [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hWnd, IntPtr dc);
     [DllImport("gdi32.dll")] public static extern uint GetPixel(IntPtr dc, int x, int y);
 
+    [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
+    [DllImport("dwmapi.dll")] public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS m);
+    [StructLayout(LayoutKind.Sequential)] public struct MARGINS { public int Left, Right, Top, Bottom; }
+
     public static string ClassName(IntPtr hWnd)
     {
         var sb = new StringBuilder(64);

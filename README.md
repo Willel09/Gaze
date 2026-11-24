@@ -46,6 +46,15 @@ Needs 64-bit Windows 10 (1809 or later) or Windows 11. Close the window and Gaze
 
 Settings you can change at any time: eye width, height, iris and pupil size, tilt, lid shadow, tracking sensitivity, movement range, smoothness and blinking. Everything is saved, including *Start with Windows*.
 
+### Looks and personality
+
+- **Looks**: one tap for Natural, Cat, Goat, Demon, Robot, Ghost, Sleepy or Alien. Each sets iris, eye whites, pupil shape and eyelids, and you can keep tweaking afterwards.
+- **Eyelid droop**: from wide awake to sleepy.
+- **Pupil focus**: the pupils contract slightly when your cursor comes close.
+- **Blink when you click**: a quick blink on every mouse click.
+- **Idle life**: leave the mouse alone and the eyes start glancing around by themselves. After three minutes they fall asleep, and any movement wakes them.
+- **Loupe**: a magnifier follows the pointer while you place or drag an eye, so marks are pixel-accurate.
+
 ### Cyclops mode
 
 Switch on **Cyclops mode** to give the picture a single eye. Click once to place it, then set its size. The same shape sliders and tracking apply.

@@ -37,6 +37,13 @@ public sealed class EyeSettings
     public string? ScleraColor { get; set; }
     public PupilShape Pupil { get; set; } = PupilShape.Round;
     public bool Glint { get; set; } = true;
+    /// <summary>Permanent lowered upper lid, 0 = wide awake, 0.5 = sleepy.</summary>
+    public double Droop { get; set; }
+
+    /// <summary>Eyes glance around when the mouse is idle and fall asleep after a few minutes.</summary>
+    public bool IdleLife { get; set; } = true;
+    /// <summary>Quick blink whenever you click.</summary>
+    public bool ClickBlink { get; set; } = true;
 
     public bool IsCalibrated => LeftSet && (Cyclops || RightSet);
 
@@ -44,7 +51,7 @@ public sealed class EyeSettings
     {
         var d = new EyeSettings();
         EyeWidth = d.EyeWidth; EyeHeight = d.EyeHeight; IrisSize = d.IrisSize;
-        PupilSize = d.PupilSize; Tilt = d.Tilt; LidShadow = d.LidShadow;
+        PupilSize = d.PupilSize; Tilt = d.Tilt; LidShadow = d.LidShadow; Droop = d.Droop;
     }
 }
 

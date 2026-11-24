@@ -25,7 +25,8 @@ public sealed class EyeView : Canvas
     readonly TranslateTransform _shift = new();
     readonly RotateTransform _tilt = new();
     readonly EllipseGeometry _clip = new();
-    double _h;
+    readonly ScaleTransform _pupilScale = new(1, 1);
+    double _h, _droop, _blink;
 
     public EyeView()
     {
@@ -33,6 +34,8 @@ public sealed class EyeView : Canvas
         RenderTransform = _tilt;
         _irisLayer.RenderTransform = _shift;
         _glint.Opacity = 0.9;
+        _pupil.RenderTransformOrigin = new Point(0.5, 0.5);
+        _pupil.RenderTransform = _pupilScale;
         foreach (UIElement e in new UIElement[] { _sclera, _irisLayer, _vignette, _shadow, _lid, _lash })
             Children.Add(e);
         _irisLayer.Children.Add(_iris);
@@ -47,6 +50,7 @@ public sealed class EyeView : Canvas
         Canvas.SetTop(this, p.Cy);
         _tilt.Angle = p.TiltDeg;
         _h = p.Height;
+        _droop = Math.Clamp(st.Droop, 0, 0.7);
         double w = p.Width, h = p.Height, r = p.IrisR;
         double lidShadow = st.LidShadow, pupilFrac = st.PupilSize;
 
@@ -118,11 +122,15 @@ public sealed class EyeView : Canvas
     /// <summary>0 = open, 1 = closed.</summary>
     public void SetBlink(double amount)
     {
-        var v = Math.Clamp(amount, 0, 1);
+        _blink = amount;
+        var v = Math.Clamp(Math.Max(amount, _droop), 0, 1);
         _lid.Height = v * (_h + 2);
         _lash.Visibility = v > 0.02 ? Visibility.Visible : Visibility.Collapsed;
         Canvas.SetTop(_lash, -_h / 2 + v * (_h + 2) - _lash.Height * 0.5);
     }
+
+    /// <summary>1 = normal, smaller = pupil contracts while the cursor is close.</summary>
+    public void SetPupilScale(double s) { _pupilScale.ScaleX = s; _pupilScale.ScaleY = s; }
 
     static void Place(FrameworkElement e, double x, double y, double w, double h)
     {
