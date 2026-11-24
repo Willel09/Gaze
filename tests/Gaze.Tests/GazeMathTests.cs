@@ -142,4 +142,15 @@ public class GazeMathTests
         Assert.Equal(-a.X, b.X, 9);
         Assert.Equal(-a.Y, b.Y, 9);
     }
+
+    [Fact]
+    public void MouthDefaultsBelowTheEyes()
+    {
+        var s = new EyeSettings { LeftSet = true, RightSet = true, LeftX = 0.4, LeftY = 0.3, RightX = 0.6, RightY = 0.3 };
+        var (x, y, unit) = EyeLayout.Mouth(s, 1000, 1000);
+        Assert.Equal(500, x, 3);
+        Assert.True(y > 300 + unit);
+        s.MouthSet = true; s.MouthX = 0.5; s.MouthY = 0.8;
+        Assert.Equal(800, EyeLayout.Mouth(s, 1000, 1000).Y, 3);
+    }
 }

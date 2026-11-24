@@ -19,6 +19,10 @@ public sealed class WallpaperScene : Canvas
     }
 
     readonly Image _image = new();
+    readonly TongueView _tongue = new() { Visibility = Visibility.Collapsed };
+    bool _tongueOn;
+    Point _mouth;
+    double _tongueMax, _tx, _ty, _tvx, _tvy;
     readonly EyeState[] _eyes = { new(), new() };
     EyeSettings _s = new();
     double _blinkT = -1, _nextBlink = 4;
@@ -36,7 +40,11 @@ public sealed class WallpaperScene : Canvas
         RenderOptions.SetBitmapScalingMode(_image, BitmapScalingMode.HighQuality);
         Children.Add(_image);
         foreach (var e in _eyes) Children.Add(e.View);
+        Children.Add(_tongue);
     }
+
+    /// <summary>The area the tongue can reach, in scene pixels (empty when there is no tongue).</summary>
+    public Rect TongueArea { get; private set; } = Rect.Empty;
 
     public bool Ready => _ready;
 
@@ -66,10 +74,14 @@ public sealed class WallpaperScene : Canvas
     public bool EyesVisible
     {
         get => _eyes[0].View.Visibility == Visibility.Visible;
-        set { for (var i = 0; i < _count; i++) _eyes[i].View.Visibility = value ? Visibility.Visible : Visibility.Hidden; }
+        set
+        {
+            for (var i = 0; i < _count; i++) _eyes[i].View.Visibility = value ? Visibility.Visible : Visibility.Hidden;
+            _tongue.Visibility = value && _tongueOn ? Visibility.Visible : Visibility.Collapsed;
+        }
     }
 
-    public void SetEyeOpacity(double o) { foreach (var e in _eyes) e.View.Opacity = o; }
+    public void SetEyeOpacity(double o) { foreach (var e in _eyes) e.View.Opacity = o; _tongue.Opacity = o; }
 
     /// <summary>Lay the photo out in a w x h scene (cover) and place the eyes. Cheap enough to call while dragging sliders.</summary>
     public void Configure(BitmapSource bmp, EyeSettings eyes, double w, double h)
@@ -102,6 +114,19 @@ public sealed class WallpaperScene : Canvas
         }
         Poses = scenePoses;
         _ready = eyes.IsCalibrated;
+
+        _tongueOn = eyes.Tongue && eyes.IsCalibrated;
+        if (_tongueOn)
+        {
+            var (mx, my, unit) = EyeLayout.Mouth(eyes, iw, ih);
+            _mouth = new Point(mx * scale + ox, my * scale + oy);
+            _tongueMax = Math.Max(8, eyes.TongueSize * unit * scale);
+            _tongue.Configure(_mouth, _tongueMax * 0.36);
+            TongueArea = new Rect(_mouth.X - _tongueMax, _mouth.Y - _tongueMax, _tongueMax * 2, _tongueMax * 2);
+            _tx = _ty = _tvx = _tvy = 0;
+        }
+        else TongueArea = Rect.Empty;
+        _tongue.Visibility = _tongueOn ? Visibility.Visible : Visibility.Collapsed;
     }
 
     static EyeColors Override(EyeColors c, EyeSettings s) =>
@@ -174,7 +199,23 @@ public sealed class WallpaperScene : Canvas
 
         _sleep += (sleepGoal - _sleep) * Math.Min(1, dt * (sleepGoal > _sleep ? 0.9 : 9));
         if (_sleep < 0.003) _sleep = 0;
+        if (_tongueOn) moved |= UpdateTongue(target, reach, smooth, dt);
         return UpdateLid(dt) | moved;
+    }
+
+    /// <summary>The tongue points at the cursor and stretches further the further away it is. Crazy mode flips it too.</summary>
+    bool UpdateTongue(Point target, double reach, double smooth, double dt)
+    {
+        double dx = target.X - _mouth.X, dy = target.Y - _mouth.Y;
+        if (_s.Crazy) { dx = -dx; dy = -dy; }
+        var d = Math.Sqrt(dx * dx + dy * dy);
+        var ext = d < 1 ? 0 : _tongueMax * (0.4 + 0.6 * Math.Tanh(d / reach)) * (1 - _sleep);
+        var gx = d < 1 ? 0 : dx / d * ext; var gy = d < 1 ? 0 : dy / d * ext;
+        GazeMath.SmoothDamp(ref _tx, ref _tvx, gx, smooth * 1.4, dt);
+        GazeMath.SmoothDamp(ref _ty, ref _tvy, gy, smooth * 1.4, dt);
+        if (Math.Abs(_tvx) + Math.Abs(_tvy) < 0.02 && Math.Abs(_tx - gx) + Math.Abs(_ty - gy) < 0.05) return false;
+        _tongue.SetTip(_tx, _ty);
+        return true;
     }
 
     bool UpdateLid(double dt)

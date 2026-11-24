@@ -44,6 +44,13 @@ public sealed class EyeSettings
     /// <summary>Eyes glance around when the mouse is idle and fall asleep after a few minutes.</summary>
     public bool IdleLife { get; set; } = true;
     public bool Crazy { get; set; }
+
+    /// <summary>A tongue that points toward the cursor. TongueSize is its length in eye distances; the mouth is placed by the user (MouthX/Y, fractions of the image) or guessed below the eyes.</summary>
+    public bool Tongue { get; set; }
+    public double TongueSize { get; set; } = 0.6;
+    public bool MouthSet { get; set; }
+    public double MouthX { get; set; }
+    public double MouthY { get; set; }
     /// <summary>Quick blink whenever you click.</summary>
     public bool ClickBlink { get; set; } = true;
 

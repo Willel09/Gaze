@@ -55,6 +55,8 @@ public partial class MainWindow : Window
         Bind(SlRange, E.Range, v => E.Range = v);
         Bind(SlSmooth, E.Smoothness, v => E.Smoothness = v);
         Bind(SlCyclops, E.CyclopsSize, v => E.CyclopsSize = v);
+        Bind(SlTongue, E.TongueSize, v => E.TongueSize = v);
+        TongueSwitch.IsChecked = E.Tongue;
         BuildSwatches();
         SyncAppearance();
         Bind(SlDroop, E.Droop, v => E.Droop = v);
@@ -72,6 +74,7 @@ public partial class MainWindow : Window
         UpdateStatus();
         UpdateMode();
         ApplyCyclopsUi();
+        ApplyTongueUi();
 
         SourceInitialized += (_, _) => DarkTitleBar();
         Loaded += (_, _) => { _loaded = true; Intro(); LayoutStage(); };
@@ -254,6 +257,15 @@ public partial class MainWindow : Window
         var p = e.GetPosition(StageGrid);
         double W = _scene.Width, H = _scene.Height;
 
+        if (_placingMouth)
+        {
+            _placingMouth = false;
+            E.MouthSet = true; E.MouthX = Math.Clamp(p.X / W, 0, 1); E.MouthY = Math.Clamp(p.Y / H, 0, 1);
+            OnEyesChanged();
+            e.Handled = true;
+            return;
+        }
+
         _drag = -1;
         var best = 28.0;
         if (E.LeftSet) { var d = Dist(p, E.LeftX * W, E.LeftY * H); if (d < best) { best = d; _drag = 0; } }
@@ -416,13 +428,14 @@ public partial class MainWindow : Window
     {
         var d = E;
         SlWidth.Value = d.EyeWidth; SlHeight.Value = d.EyeHeight; SlIris.Value = d.IrisSize; SlPupil.Value = d.PupilSize;
-        SlTilt.Value = d.Tilt; SlLid.Value = d.LidShadow; SlDroop.Value = d.Droop; SlCyclops.Value = d.CyclopsSize;
+        SlTilt.Value = d.Tilt; SlLid.Value = d.LidShadow; SlDroop.Value = d.Droop; SlCyclops.Value = d.CyclopsSize; SlTongue.Value = d.TongueSize; TongueSwitch.IsChecked = d.Tongue;
         SlSens.Value = d.Sensitivity; SlRange.Value = d.Range; SlSmooth.Value = d.Smoothness;
         BlinkSwitch.IsChecked = d.Blink; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife; CrazySwitch.IsChecked = d.Crazy;
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
         StartSwitch.IsChecked = _app.Settings.StartWithWindows;
         SyncAppearance();
         ApplyCyclopsUi();
+        ApplyTongueUi();
     }
 
     void OnSaveBackground(object sender, RoutedEventArgs e)
@@ -611,6 +624,26 @@ public partial class MainWindow : Window
         ApplyCyclopsUi();
         RefreshMarks();
         OnEyesChanged();
+    }
+
+    bool _placingMouth;
+
+    void OnTongue(object sender, RoutedEventArgs e)
+    {
+        E.Tongue = TongueSwitch.IsChecked == true;
+        ApplyTongueUi();
+        OnEyesChanged();
+    }
+
+    void ApplyTongueUi() => TonguePanel.Visibility = E.Tongue ? Visibility.Visible : Visibility.Collapsed;
+
+    void OnPlaceMouth(object sender, RoutedEventArgs e)
+    {
+        if (_bmp == null) { Toast("Choose a wallpaper first"); return; }
+        if (!E.IsCalibrated) { Toast("Mark the eyes first"); return; }
+        ModeCalibrate.IsChecked = true;
+        _placingMouth = true;
+        Toast("Click the photo where the mouth is");
     }
 
     void ApplyCyclopsUi()

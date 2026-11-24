@@ -164,7 +164,28 @@
                             </StackPanel>
                         </Border>
 
-                        </StackPanel>
+                                                <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBlock Style="{StaticResource CardIcon}" Text="&#xE76E;"/>
+                                    <TextBlock Style="{StaticResource CardTitle}" Text="Tongue"/>
+                                </StackPanel>
+                                <CheckBox x:Name="TongueSwitch" Style="{StaticResource Switch}" Click="OnTongue">
+                                    <StackPanel>
+                                        <TextBlock Text="Tongue"/>
+                                        <TextBlock Style="{StaticResource Caption}" Text="Sticks out toward your cursor"/>
+                                    </StackPanel>
+                                </CheckBox>
+                                <StackPanel x:Name="TonguePanel" Visibility="Collapsed">
+                                    <g:LabeledSlider x:Name="SlTongue" Label="Tongue length" Minimum="0.2" Maximum="1.2"/>
+                                    <Button x:Name="MouthBtn" Style="{StaticResource QuietButton}" Click="OnPlaceMouth" HorizontalAlignment="Left" Padding="10,0" Height="32">
+                                        <TextBlock Text="Place mouth on photo"/>
+                                    </Button>
+                                    <TextBlock Style="{StaticResource Caption}" Margin="2,6,0,0" Text="Until you place it, the mouth sits below the eyes."/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+</StackPanel>
 <StackPanel x:Name="PageBehave" Visibility="Collapsed">
 <Border Style="{StaticResource Card}">
                             <StackPanel>

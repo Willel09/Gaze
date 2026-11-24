@@ -215,6 +215,11 @@ public sealed class WallpaperHost : IDisposable
             var rad = Math.Max(p.Width, p.Height) / 2 * 1.2 + 8;
             l = Math.Min(l, p.Cx - rad); t = Math.Min(t, p.Cy - rad); r = Math.Max(r, p.Cx + rad); b = Math.Max(b, p.Cy + rad);
         }
+        if (!scene.TongueArea.IsEmpty)
+        {
+            var ta = scene.TongueArea;
+            l = Math.Min(l, ta.Left); t = Math.Min(t, ta.Top); r = Math.Max(r, ta.Right); b = Math.Max(b, ta.Bottom);
+        }
         int bx = (int)Math.Max(0, Math.Floor(l)), by = (int)Math.Max(0, Math.Floor(t));
         int bw = (int)Math.Min(m.W, Math.Ceiling(r)) - bx, bh = (int)Math.Min(m.H, Math.Ceiling(b)) - by;
 
