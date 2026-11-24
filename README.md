@@ -46,6 +46,10 @@ Needs 64-bit Windows 10 (1809 or later) or Windows 11. Close the window and Gaze
 
 Settings you can change at any time: eye width, height, iris and pupil size, tilt, lid shadow, tracking sensitivity, movement range, smoothness and blinking. Everything is saved, including *Start with Windows*.
 
+### Saved backgrounds
+
+Press **Save current** to keep a background in your library. Click any saved background to swap to it, live on your desktop if it is applied. Each one remembers its own eye marks, look and behaviour, and tweaks are saved to it automatically. The tray menu has a **Backgrounds** list and **Next background** too, so you can swap without opening the window.
+
 ### Looks and personality
 
 - **Looks**: one tap for Natural, Cat, Goat, Demon, Robot, Ghost, Sleepy or Alien. Each sets iris, eye whites, pupil shape and eyelids, and you can keep tweaking afterwards.

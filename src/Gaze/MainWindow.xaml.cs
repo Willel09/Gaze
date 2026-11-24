@@ -43,6 +43,7 @@ public partial class MainWindow : Window
 
         _save.Tick += (_, _) => { _save.Stop(); _app.Save(); };
         _app.StatusChanged += UpdateStatus;
+        _app.Swapped += OnSwapped;
 
         Bind(SlWidth, E.EyeWidth, v => E.EyeWidth = v);
         Bind(SlHeight, E.EyeHeight, v => E.EyeHeight = v);
@@ -61,6 +62,7 @@ public partial class MainWindow : Window
         ClickSwitch.IsChecked = E.ClickBlink;
         IdleSwitch.IsChecked = E.IdleLife;
         BuildLooks();
+        BuildLibrary();
         _logo = new MiniEye(LogoEye);
         _emptyEye = new MiniEye(EmptyEye);
         TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
@@ -370,6 +372,7 @@ public partial class MainWindow : Window
             PickLeft.IsChecked = true;
             ModeCalibrate.IsChecked = true;
             LoadImage();
+            BuildLibrary();
             Toast(E.Cyclops ? "Now click the eye" : "Now mark the left and right eye");
         }
         catch (Exception ex)
@@ -394,6 +397,102 @@ public partial class MainWindow : Window
         if (lx + 140 > _scene.Width) lx = p.X - 168;
         Loupe.Margin = new Thickness(Math.Max(4, lx), ly, 0, 0);
         Loupe.Visibility = Visibility.Visible;
+    }
+
+    // ---- saved backgrounds ------------------------------------------------------------------------------------
+
+    void OnSwapped()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            SyncAllControls();
+            LoadImage();
+            BuildLibrary();
+        });
+    }
+
+    /// <summary>Pushes the current settings into every control (after a swap or a reset).</summary>
+    void SyncAllControls()
+    {
+        var d = E;
+        SlWidth.Value = d.EyeWidth; SlHeight.Value = d.EyeHeight; SlIris.Value = d.IrisSize; SlPupil.Value = d.PupilSize;
+        SlTilt.Value = d.Tilt; SlLid.Value = d.LidShadow; SlDroop.Value = d.Droop; SlCyclops.Value = d.CyclopsSize;
+        SlSens.Value = d.Sensitivity; SlRange.Value = d.Range; SlSmooth.Value = d.Smoothness;
+        BlinkSwitch.IsChecked = d.Blink; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife;
+        TrackSwitch.IsChecked = _app.Settings.Applied && _app.Settings.TrackingEnabled;
+        StartSwitch.IsChecked = _app.Settings.StartWithWindows;
+        SyncAppearance();
+        ApplyCyclopsUi();
+    }
+
+    void OnSaveBackground(object sender, RoutedEventArgs e)
+    {
+        if (_bmp == null) { Toast("Choose a wallpaper first"); return; }
+        _save.Stop(); _app.Save();
+        try
+        {
+            if (_app.Settings.ActiveId != null) { Toast("Already saved. Your changes are kept automatically"); return; }
+            var saved = _app.SaveCurrentToLibrary();
+            Toast(saved != null ? $"Saved “{saved.Name}”" : "Could not save");
+        }
+        catch (Exception ex) { Toast("Could not save: " + ex.Message); }
+    }
+
+    void BuildLibrary()
+    {
+        LibraryPanel.Children.Clear();
+        var lib = _app.Settings.Library;
+        LibraryEmpty.Visibility = lib.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        SaveBgBtn.IsEnabled = _bmp != null && _app.Settings.ActiveId == null;
+        SaveBgBtn.Content = _app.Settings.ActiveId == null ? "Save current" : "Saved";
+
+        foreach (var bg in lib)
+        {
+            var active = bg.Id == _app.Settings.ActiveId;
+            var img = new Image { Stretch = Stretch.UniformToFill };
+            try
+            {
+                var bi = new System.Windows.Media.Imaging.BitmapImage();
+                bi.BeginInit();
+                bi.UriSource = new Uri(_app.LibraryPath(bg.Thumb));
+                bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bi.EndInit(); bi.Freeze();
+                img.Source = bi;
+            }
+            catch { /* missing thumbnail: show the dark tile */ }
+
+            var name = new TextBlock
+            {
+                Text = bg.Name, FontSize = 11, Margin = new Thickness(8, 3, 8, 4), TextTrimming = TextTrimming.CharacterEllipsis, TextWrapping = TextWrapping.NoWrap,
+            };
+            var caption = new Border { Background = new SolidColorBrush(Color.FromArgb(0xB0, 0, 0, 0)), VerticalAlignment = VerticalAlignment.Bottom, Child = name };
+
+            var del = new Border
+            {
+                Width = 22, Height = 22, CornerRadius = new CornerRadius(11), Margin = new Thickness(0, 6, 6, 0), Opacity = 0, Cursor = Cursors.Hand,
+                HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+                Background = new SolidColorBrush(Color.FromArgb(0xCC, 0, 0, 0)), ToolTip = "Remove from backgrounds",
+                Child = new TextBlock { Text = "\uE711", FontFamily = (FontFamily)FindResource("IconFont"), FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },
+            };
+            System.Windows.Automation.AutomationProperties.SetName(del, "Remove " + bg.Name);
+
+            var tile = new Border
+            {
+                Width = 150, Height = 96, CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 0, 8, 8), ClipToBounds = true,
+                BorderThickness = new Thickness(2), BorderBrush = active ? (Brush)FindResource("AccentText") : Brushes.Transparent,
+                Background = Brushes.Black, Cursor = Cursors.Hand, Focusable = true, ToolTip = bg.Name,
+                Child = new Grid { Children = { img, caption, del } },
+            };
+            System.Windows.Automation.AutomationProperties.SetName(tile, "Use background " + bg.Name);
+
+            var id = bg.Id;
+            tile.MouseEnter += (_, _) => del.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(1, TimeSpan.FromMilliseconds(120)));
+            tile.MouseLeave += (_, _) => del.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
+            tile.MouseLeftButtonUp += async (_, ev) => { if (ev.Handled) return; await _app.SwapToAsync(id); };
+            tile.KeyDown += async (_, ev) => { if (ev.Key is Key.Enter or Key.Space) await _app.SwapToAsync(id); };
+            del.MouseLeftButtonUp += (_, ev) => { ev.Handled = true; _app.DeleteFromLibrary(id); };
+            LibraryPanel.Children.Add(tile);
+        }
     }
 
     // ---- looks ------------------------------------------------------------------------------------------------
@@ -605,17 +704,13 @@ public partial class MainWindow : Window
 
     void OnReset(object sender, RoutedEventArgs e)
     {
-        var r = MessageBox.Show(this, "This removes your wallpaper, eye marks and preferences, and restores your previous Windows wallpaper.",
+        var r = MessageBox.Show(this, "This removes your wallpaper, saved backgrounds, eye marks and preferences, and restores your previous Windows wallpaper.",
             "Reset settings?", MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
         if (r != MessageBoxResult.OK) return;
         _app.Reset();
-        var d = _app.Settings.Eyes;
-        Bind2(SlWidth, d.EyeWidth); Bind2(SlHeight, d.EyeHeight); Bind2(SlIris, d.IrisSize); Bind2(SlPupil, d.PupilSize);
-        Bind2(SlTilt, d.Tilt); Bind2(SlLid, d.LidShadow); Bind2(SlSens, d.Sensitivity); Bind2(SlRange, d.Range); Bind2(SlSmooth, d.Smoothness);
-        SlDroop.Value = d.Droop; ClickSwitch.IsChecked = d.ClickBlink; IdleSwitch.IsChecked = d.IdleLife;
-        SyncAppearance(); ApplyCyclopsUi();
-        BlinkSwitch.IsChecked = false; TrackSwitch.IsChecked = false; StartSwitch.IsChecked = false;
+        SyncAllControls();
         LoadImage();
+        BuildLibrary();
         Toast("Settings reset");
     }
 

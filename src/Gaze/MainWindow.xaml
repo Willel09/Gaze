@@ -49,6 +49,20 @@
 
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
+                                <Grid Margin="0,0,0,12">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource CardIcon}" Text="&#xE8F1;"/>
+                                        <TextBlock Style="{StaticResource CardTitle}" Text="Backgrounds"/>
+                                    </StackPanel>
+                                    <Button x:Name="SaveBgBtn" Style="{StaticResource Chip}" Click="OnSaveBackground" HorizontalAlignment="Right" Margin="0" Content="Save current"/>
+                                </Grid>
+                                <WrapPanel x:Name="LibraryPanel"/>
+                                <TextBlock x:Name="LibraryEmpty" Style="{StaticResource Caption}" Text="Save a background to swap between favourites in one click. Each one remembers its own eyes."/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                     <TextBlock Style="{StaticResource CardIcon}" Text="&#xE790;"/>
                                     <TextBlock Style="{StaticResource CardTitle}" Text="Looks"/>

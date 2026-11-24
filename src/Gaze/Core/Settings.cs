@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -47,6 +48,9 @@ public sealed class EyeSettings
 
     public bool IsCalibrated => LeftSet && (Cyclops || RightSet);
 
+    /// <summary>Independent deep copy (settings are plain data, so JSON is enough).</summary>
+    public EyeSettings Clone() => JsonSerializer.Deserialize<EyeSettings>(JsonSerializer.Serialize(this)) ?? new EyeSettings();
+
     public void ResetShape()
     {
         var d = new EyeSettings();
@@ -55,8 +59,22 @@ public sealed class EyeSettings
     }
 }
 
+/// <summary>A favourite background: the photo plus its own eye calibration and look.</summary>
+public sealed class SavedBackground
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string File { get; set; } = "";
+    public string Thumb { get; set; } = "";
+    public EyeSettings Eyes { get; set; } = new();
+}
+
 public sealed class AppSettings
 {
+    public List<SavedBackground> Library { get; set; } = new();
+    /// <summary>The library entry that is currently loaded. Edits to the eyes are written back to it.</summary>
+    public string? ActiveId { get; set; }
+
     public string? WallpaperFile { get; set; }
     public string? WallpaperName { get; set; }
     public string? PreviousSystemWallpaper { get; set; }

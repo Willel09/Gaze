@@ -11,7 +11,7 @@ public partial class App : Application
     Mutex? _mutex;
     EventWaitHandle? _showSignal;
     Forms.NotifyIcon? _tray;
-    Forms.ToolStripMenuItem? _trackItem;
+    Forms.ToolStripMenuItem? _trackItem, _bgMenu;
     MainWindow? _main;
 
     public AppController Controller { get; private set; } = null!;
@@ -40,6 +40,7 @@ public partial class App : Application
         Desktop.Updater.CleanUp();
         Controller = new AppController();
         Controller.StatusChanged += SyncTray;
+        Controller.Swapped += SyncTray;
         Controller.Restart();
         BuildTray();
 
@@ -65,6 +66,8 @@ public partial class App : Application
 
         var menu = new Forms.ContextMenuStrip { ShowImageMargin = false };
         menu.Items.Add("Open Gaze", null, (_, _) => ShowMain());
+        _bgMenu = new Forms.ToolStripMenuItem("Backgrounds");
+        menu.Items.Add(_bgMenu);
         menu.Items.Add(_trackItem);
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => Quit());
@@ -77,6 +80,18 @@ public partial class App : Application
     void SyncTray()
     {
         if (_tray == null || _trackItem == null) return;
+        _bgMenu!.DropDownItems.Clear();
+        foreach (var bg in Controller.Settings.Library)
+        {
+            var id = bg.Id;
+            _bgMenu.DropDownItems.Add(new Forms.ToolStripMenuItem(bg.Name, null, async (_, _) => await Controller.SwapToAsync(id)) { Checked = id == Controller.Settings.ActiveId });
+        }
+        if (Controller.Settings.Library.Count > 1)
+        {
+            _bgMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
+            _bgMenu.DropDownItems.Add("Next background", null, async (_, _) => await Controller.NextAsync());
+        }
+        _bgMenu.Enabled = Controller.Settings.Library.Count > 0;
         _trackItem.Enabled = Controller.Settings.Applied;
         _trackItem.Checked = Controller.Settings.Applied && Controller.Settings.TrackingEnabled;
         _tray.Text = Controller.Status switch

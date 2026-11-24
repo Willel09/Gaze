@@ -122,4 +122,15 @@ public class GazeMathTests
     {
         Assert.Equal(newer, VersionCompare.IsNewer(tag, new Version(1, 1, 0, 0)));
     }
+
+    [Fact]
+    public void EyeSettings_Clone_IsIndependent()
+    {
+        var a = new EyeSettings { LeftX = 0.3, IrisColor = "#112233", Pupil = PupilShape.Slit };
+        var b = a.Clone();
+        b.LeftX = 0.9; b.IrisColor = null;
+        Assert.Equal(0.3, a.LeftX);
+        Assert.Equal("#112233", a.IrisColor);
+        Assert.Equal(PupilShape.Slit, b.Pupil);
+    }
 }
