@@ -1,0 +1,122 @@
+using System;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using Gaze.Core;
+
+namespace Gaze.Rendering;
+
+/// <summary>
+/// One synthetic eye drawn over the photo: sclera, iris with pupil and catch-light, lid shadow, optional blink lid.
+/// Only the iris translate and the blink lid height change per frame, so rendering stays on the GPU.
+/// </summary>
+public sealed class EyeView : Canvas
+{
+    readonly Ellipse _sclera = new();
+    readonly Canvas _irisLayer = new();
+    readonly Ellipse _iris = new();
+    readonly Ellipse _glint = new();
+    readonly Ellipse _vignette = new();
+    readonly Rectangle _shadow = new();
+    readonly Rectangle _lid = new();
+    readonly Rectangle _lash = new();
+    readonly TranslateTransform _shift = new();
+    readonly RotateTransform _tilt = new();
+    readonly EllipseGeometry _clip = new();
+    double _h;
+
+    public EyeView()
+    {
+        IsHitTestVisible = false;
+        RenderTransform = _tilt;
+        _irisLayer.RenderTransform = _shift;
+        _glint.Opacity = 0.9;
+        foreach (UIElement e in new UIElement[] { _sclera, _irisLayer, _vignette, _shadow, _lid, _lash })
+            Children.Add(e);
+        _irisLayer.Children.Add(_iris);
+        _irisLayer.Children.Add(_glint);
+        Clip = _clip;
+    }
+
+    public void Configure(EyePose p, double lidShadow, double pupilFrac, EyeColors c)
+    {
+        Canvas.SetLeft(this, p.Cx);
+        Canvas.SetTop(this, p.Cy);
+        _tilt.Angle = p.TiltDeg;
+        _h = p.Height;
+        double w = p.Width, h = p.Height, r = p.IrisR;
+
+        _clip.RadiusX = w / 2; _clip.RadiusY = h / 2;
+
+        Place(_sclera, -w / 2 - 1, -h / 2 - 1, w + 2, h + 2);
+        _sclera.Fill = Frozen(new RadialGradientBrush(
+            Scale(c.Sclera, 1.04), Scale(c.Sclera, 0.74)) { RadiusX = 0.62, RadiusY = 0.7 });
+
+        Place(_iris, -r, -r, 2 * r, 2 * r);
+        var ring = Scale(c.Iris, 0.35);
+        var mid = Scale(c.Iris, 1.0);
+        var rim = Scale(c.Iris, 0.62);
+        _iris.Fill = Frozen(new RadialGradientBrush(new GradientStopCollection
+        {
+            new(Color.FromRgb(8, 8, 9), 0.0),
+            new(Color.FromRgb(8, 8, 9), pupilFrac),
+            new(Scale(c.Iris, 0.55), Math.Min(0.98, pupilFrac + 0.04)),
+            new(mid, 0.62),
+            new(rim, 0.86),
+            new(ring, 0.97),
+            new(Color.FromArgb(0, ring.R, ring.G, ring.B), 1.0),
+        }));
+
+        var g = r * 0.42;
+        Place(_glint, -r * 0.46, -r * 0.5, g, g);
+        _glint.Fill = Frozen(new RadialGradientBrush(
+            Color.FromArgb(235, 255, 255, 255), Color.FromArgb(0, 255, 255, 255)));
+
+        Place(_vignette, -w / 2, -h / 2, w, h);
+        _vignette.Fill = Frozen(new RadialGradientBrush(new GradientStopCollection
+        {
+            new(Color.FromArgb(0, 0, 0, 0), 0.0),
+            new(Color.FromArgb(0, 0, 0, 0), 0.62),
+            new(Color.FromArgb(110, 20, 10, 8), 1.0),
+        }));
+
+        Place(_shadow, -w / 2, -h / 2, w, h);
+        var a = (byte)(Math.Clamp(lidShadow, 0, 1) * 200);
+        _shadow.Fill = Frozen(new LinearGradientBrush(new GradientStopCollection
+        {
+            new(Color.FromArgb(a, 12, 6, 4), 0.0),
+            new(Color.FromArgb((byte)(a / 3), 12, 6, 4), 0.32),
+            new(Color.FromArgb(0, 12, 6, 4), 0.62),
+        }, 90));
+
+        _lid.Fill = Frozen(new SolidColorBrush(Scale(c.Skin, 0.92)));
+        _lash.Fill = Frozen(new SolidColorBrush(Color.FromArgb(200, 18, 10, 8)));
+        Place(_lid, -w / 2 - 1, -h / 2 - 1, w + 2, 0);
+        Place(_lash, -w / 2 - 1, -h / 2, w + 2, Math.Max(1.2, h * 0.07));
+        SetBlink(0);
+        SetOffset(_shift.X, _shift.Y);
+    }
+
+    /// <summary>Iris offset in the eye's own tilted frame, in scene pixels.</summary>
+    public void SetOffset(double x, double y) { _shift.X = x; _shift.Y = y; }
+
+    /// <summary>0 = open, 1 = closed.</summary>
+    public void SetBlink(double amount)
+    {
+        var v = Math.Clamp(amount, 0, 1);
+        _lid.Height = v * (_h + 2);
+        _lash.Visibility = v > 0.02 ? Visibility.Visible : Visibility.Collapsed;
+        Canvas.SetTop(_lash, -_h / 2 + v * (_h + 2) - _lash.Height * 0.5);
+    }
+
+    static void Place(FrameworkElement e, double x, double y, double w, double h)
+    {
+        Canvas.SetLeft(e, x); Canvas.SetTop(e, y); e.Width = w; e.Height = h;
+    }
+
+    static Color Scale(Color c, double f) => Color.FromRgb(
+        (byte)Math.Clamp(c.R * f, 0, 255), (byte)Math.Clamp(c.G * f, 0, 255), (byte)Math.Clamp(c.B * f, 0, 255));
+
+    static T Frozen<T>(T f) where T : Freezable { f.Freeze(); return f; }
+}

@@ -1,0 +1,71 @@
+name: Release
+
+# Push a tag like v1.0.0, or run this workflow by hand and give it a version.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version tag to publish, for example v1.0.0
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.version || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "num=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test tests/Gaze.Tests -c Release
+
+      - name: Publish single-file exe
+        run: >
+          dotnet publish src/Gaze -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ steps.v.outputs.num }}
+          -o out
+
+      - name: Name the files
+        shell: pwsh
+        run: |
+          Copy-Item out/Gaze.exe "Gaze-${{ steps.v.outputs.tag }}-win-x64.exe"
+          (Get-FileHash "Gaze-${{ steps.v.outputs.tag }}-win-x64.exe" -Algorithm SHA256).Hash.ToLower() +
+            "  Gaze-${{ steps.v.outputs.tag }}-win-x64.exe" | Out-File -Encoding ascii "Gaze-${{ steps.v.outputs.tag }}-win-x64.exe.sha256"
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.v.outputs.tag }}"
+          cat > notes.md <<NOTES
+          ## Install
+
+          1. Download **Gaze-${TAG}-win-x64.exe** below.
+          2. Run it. Nothing to install, no .NET needed.
+          3. Choose a photo, click both eyes, press **Apply to desktop**.
+
+          Windows 10 (1809 or later) and Windows 11, 64-bit. SHA-256 is attached.
+
+          Windows SmartScreen may warn about an unrecognised app because the exe is not code-signed yet.
+          Click **More info**, then **Run anyway**.
+          NOTES
+          gh release create "$TAG" "Gaze-${TAG}-win-x64.exe" "Gaze-${TAG}-win-x64.exe.sha256" \
+            --target "${{ github.sha }}" --title "Gaze ${TAG}" --notes-file notes.md --generate-notes

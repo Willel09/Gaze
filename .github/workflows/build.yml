@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Test
+        run: dotnet test tests/Gaze.Tests -c Release
+      - name: Publish single-file exe
+        run: >
+          dotnet publish src/Gaze -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gaze-win-x64
+          path: out/Gaze.exe
+          if-no-files-found: error
