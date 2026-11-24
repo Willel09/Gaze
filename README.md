@@ -118,6 +118,14 @@ tests/Gaze.Tests/   unit tests for the maths and layout
 .github/workflows/  build and release pipelines
 ```
 
+## Contributors
+
+<a href="https://github.com/Willel09/Olles-gon/graphs/contributors">
+  <img alt="Contributors" src="https://contrib.rocks/image?repo=Willel09/Olles-gon" height="48">
+</a>
+
+[@Willel09](https://github.com/Willel09) created and maintains Gaze.
+
 ## License
 
 [MIT](LICENSE)
