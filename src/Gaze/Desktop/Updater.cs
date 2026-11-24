@@ -18,7 +18,7 @@ public sealed record UpdateInfo(string Tag, string DownloadUrl, long Size);
 /// </summary>
 public static class Updater
 {
-    const string Api = "https://api.github.com/repos/Willel09/Olles-gon/releases/latest";
+    const string Api = "https://api.github.com/repos/Willel09/Gaze/releases/latest";
     static readonly HttpClient Http = Create();
 
     public static Version Current { get; } = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0);

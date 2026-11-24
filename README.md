@@ -3,14 +3,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Willel09/Olles-gon/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Willel09/Olles-gon?style=flat-square&color=0071E3&label=release"></a>
-  <a href="https://github.com/Willel09/Olles-gon/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Willel09/Olles-gon/build.yml?style=flat-square&label=build"></a>
+  <a href="https://github.com/Willel09/Gaze/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Willel09/Gaze?style=flat-square&color=0071E3&label=release"></a>
+  <a href="https://github.com/Willel09/Gaze/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Willel09/Gaze/build.yml?style=flat-square&label=build"></a>
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-48484A?style=flat-square">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-48484A?style=flat-square"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/Willel09/Olles-gon/releases/latest"><b>Download Gaze.exe</b></a>
+  <a href="https://github.com/Willel09/Gaze/releases/latest"><b>Download Gaze.exe</b></a>
   &nbsp;·&nbsp;
   <a href="#how-it-works">How it works</a>
   &nbsp;·&nbsp;
@@ -27,7 +27,7 @@ Gaze is one self-contained `.exe`. No installer, no .NET to install, no account.
 
 ## Install
 
-1. Open the [latest release](https://github.com/Willel09/Olles-gon/releases/latest) and download `Gaze-…-win-x64.exe`.
+1. Open the [latest release](https://github.com/Willel09/Gaze/releases/latest) and download `Gaze-…-win-x64.exe`.
 2. Run it. If SmartScreen warns about an unrecognised app, choose **More info**, then **Run anyway**. The exe is not code-signed yet.
 3. Choose a wallpaper, click both eyes, press **Apply to desktop**.
 
@@ -99,7 +99,7 @@ Windows builds stack the desktop layers differently, so Gaze has eight ways of a
 On Windows 11 24H2 and later (build 26100+), Windows does not show windows placed inside its wallpaper layer. Gaze then uses a small click-through window that holds only the eyes and sits directly above the wallpaper and below every app, with the photo set as your real wallpaper underneath.
 
 1. Apply to desktop, then press `Win` + `D` and wait a few seconds.
-2. Press **Open log file** and attach it, with your Windows version, to an [issue](https://github.com/Willel09/Olles-gon/issues).
+2. Press **Open log file** and attach it, with your Windows version, to an [issue](https://github.com/Willel09/Gaze/issues).
 
 ## Performance
 
@@ -118,8 +118,8 @@ The photo is decoded once per monitor size. Each frame only moves two translate 
 You need the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) on Windows.
 
 ```bash
-git clone https://github.com/Willel09/Olles-gon.git
-cd Olles-gon
+git clone https://github.com/Willel09/Gaze.git
+cd Gaze
 dotnet run --project src/Gaze
 ```
 
@@ -157,8 +157,8 @@ tests/Gaze.Tests/   unit tests for the maths and layout
 
 ## Contributors
 
-<a href="https://github.com/Willel09/Olles-gon/graphs/contributors">
-  <img alt="Contributors" src="https://contrib.rocks/image?repo=Willel09/Olles-gon" height="48">
+<a href="https://github.com/Willel09/Gaze/graphs/contributors">
+  <img alt="Contributors" src="https://contrib.rocks/image?repo=Willel09/Gaze" height="48">
 </a>
 
 [@Willel09](https://github.com/Willel09) created and maintains Gaze.
